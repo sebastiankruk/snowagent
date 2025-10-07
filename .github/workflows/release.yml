@@ -47,6 +47,11 @@ jobs:
           fi
           echo "VERSION=${VERSION_NUMBER}" >> $GITHUB_OUTPUT
 
+      - name: Clean up previous build artifacts
+        run: |
+          rm -f dynatrace_snowflake_observability_agent-*.zip
+          rm -f Dynatrace-Snowflake-Observability-Agent-*.pdf
+
       - name: Run package script
         id: package
         run: |
