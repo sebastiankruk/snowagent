@@ -71,16 +71,11 @@ jobs:
         run: |
           VERSION_HEADER="## Dynatrace Snowflake Observability Agent ${{ steps.get_version.outputs.VERSION }}"
           # Use awk to find the section for the current version and print until the next ## heading
-          NOTES=$(awk -v header="$VERSION_HEADER" '
+          awk -v header="$VERSION_HEADER" '
             $0 == header { in_section=1; next }
             /^## / { if (in_section) exit }
             in_section { print }
-          ' CHANGELOG.md)
-          # Escape characters for multiline output
-          NOTES="${NOTES//'%'/'%25'}"
-          NOTES="${NOTES//$'\n'/'%0A'}"
-          NOTES="${NOTES//$'\r'/'%0D'}"
-          echo "NOTES=${NOTES}" >> $GITHUB_OUTPUT
+          ' CHANGELOG.md > release_notes.md
 
       - name: Create GitHub Release
         if: github.ref_type == 'tag' || inputs.create_release == true
@@ -88,7 +83,7 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           name: Dynatrace Snowflake Observability Agent ${{ steps.get_version.outputs.VERSION }}
-          body: ${{ steps.extract_release_notes.outputs.NOTES }}
+          body_path: release_notes.md
           draft: ${{ inputs.create_release == true }}
           files: |
             ${{ steps.package.outputs.ZIP_NAME }}
