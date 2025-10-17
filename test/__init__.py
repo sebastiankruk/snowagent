@@ -42,6 +42,9 @@ read_secret(
     env_name="DTAGENT_TOKEN",
 )
 
+# Global variable to store the current test source for telemetry mocking
+_current_test_source = [None]
+
 
 @functools.lru_cache(maxsize=1)
 def _get_credentials() -> Dict:
@@ -111,8 +114,12 @@ class TestDynatraceSnowAgent(DynatraceSnowAgent):
 
         OtelManager.reset_current_fail_count()
         if is_local_testing():
-            with mock_telemetry_sending():
-                return super().process(sources, run_proc)
+            _current_test_source[0] = sources[0] if sources else None
+            try:
+                with mock_telemetry_sending():
+                    return super().process(sources, run_proc)
+            finally:
+                _current_test_source[0] = None
         else:
             return super().process(sources, run_proc)
 
@@ -125,13 +132,13 @@ def _overwrite_plugin_local_config_key(test_conf: TestConfiguration, plugin_name
 
 @contextmanager
 def mock_telemetry_sending():
-    with patch("dtagent.otel.otel_manager.CustomLoggingSession.send") as mock_otel, patch(
-        "dtagent.otel.metrics.requests.post"
-    ) as mock_metrics, patch("dtagent.otel.events.requests.post") as mock_events, patch(
-        "dtagent.otel.bizevents.requests.post"
-    ) as mock_bizevents, patch(
-        "snowflake.snowpark.Session.sql"
-    ) as mock_sql:
+    with (
+        patch("dtagent.otel.otel_manager.CustomLoggingSession.send") as mock_otel,
+        patch("dtagent.otel.metrics.requests.post") as mock_metrics,
+        patch("dtagent.otel.events.requests.post") as mock_events,
+        patch("dtagent.otel.bizevents.requests.post") as mock_bizevents,
+        patch("snowflake.snowpark.Session.sql") as mock_sql,
+    ):
         # Set up HTTP mocks
         mock_otel.side_effect = side_effect_function
         mock_metrics.side_effect = side_effect_function
@@ -150,6 +157,47 @@ def mock_telemetry_sending():
         yield
 
 
+def decode_object_from_protobuf(protobuf_bytes: bytes) -> str:
+    """
+    Decode protobuf logs to extract key-value pairs from log bodies.
+
+    Args:
+        protobuf_bytes: The binary protobuf data from OpenTelemetry logs
+
+    Returns:
+        A dictionary representing the extracted key-value pairs.
+    """
+    from opentelemetry.proto.collector.logs.v1.logs_service_pb2 import ExportLogsServiceRequest
+
+    request = ExportLogsServiceRequest()
+    request.ParseFromString(protobuf_bytes)
+
+    kv_data = {}
+
+    for resource_log in getattr(request, "resource_logs"):
+        for scope_log in resource_log.scope_logs:
+            for log_record in scope_log.log_records:
+                # Extract from body.kvlist_value.values
+                if log_record.body.HasField("kvlist_value"):
+                    for kv_pair in log_record.body.kvlist_value.values:
+                        key = kv_pair.key
+                        # Get the actual value based on the type
+                        if kv_pair.value.HasField("string_value"):
+                            value = kv_pair.value.string_value
+                        elif kv_pair.value.HasField("int_value"):
+                            value = kv_pair.value.int_value
+                        elif kv_pair.value.HasField("double_value"):
+                            value = kv_pair.value.double_value
+                        elif kv_pair.value.HasField("bool_value"):
+                            value = kv_pair.value.bool_value
+                        else:
+                            value = str(kv_pair.value)  # fallback
+
+                        kv_data[key] = value
+
+    return kv_data
+
+
 def side_effect_function(*args, **kwargs):
     import inspect
     from unittest.mock import MagicMock
@@ -159,14 +207,8 @@ def side_effect_function(*args, **kwargs):
     from dtagent.otel.metrics import Metrics
     from dtagent.otel.spans import Spans
 
-    # Inspect the call stack to find the 'source' variable from DynatraceSnowAgent.process()
-    source_context = None
-    frame = inspect.currentframe()
-    while frame:
-        if "source" in frame.f_locals and isinstance(frame.f_locals["source"], str) and frame.f_locals["source"].startswith("test_"):
-            source_context = frame.f_locals["source"]
-            break
-        frame = frame.f_back
+    # Use the global test source instead of inspecting the stack
+    source_context = _current_test_source[0]
 
     # Handle both requests.post mocks (args[0] is url) and CustomLoggingSession.send mocks (args[0] is request)
     if hasattr(args[0], "url"):
@@ -206,6 +248,7 @@ def side_effect_function(*args, **kwargs):
     if data and telemetry_type and source_context:
         ext = "txt" if telemetry_type == "metrics" else "json"
         filepath = f"test/test_results/{source_context}/{telemetry_type}.{ext}"
+        content = None
 
         if not os.path.exists(filepath):
             os.makedirs(os.path.dirname(filepath), exist_ok=True)
@@ -213,19 +256,20 @@ def side_effect_function(*args, **kwargs):
             if isinstance(data, (dict, str)):
                 content = data
             elif isinstance(data, bytes):
-                content = data.decode("utf-8")
+                if telemetry_type in ("logs", "spans"):
+                    content = decode_object_from_protobuf(data)
             else:
                 content = str(data)
 
-            with open(filepath, "w", encoding="utf-8") as f:
-                if ext == "json":
-                    # Parse and pretty-print as JSON
-                    try:
-                        json_data = json.loads(content) if isinstance(content, str) else content
-                        json.dump(json_data, f, indent=2)
-                    except (json.JSONDecodeError, TypeError):
+            if content is not None:
+                with open(filepath, "w", encoding="utf-8") as f:
+                    if ext == "json":
+                        try:
+                            json_data = json.loads(content) if isinstance(content, str) else content
+                            json.dump(json_data, f, indent=2)
+                        except (json.JSONDecodeError, TypeError):
+                            f.write(content)
+                    else:
                         f.write(content)
-                else:
-                    f.write(content)
 
     return mock_response
