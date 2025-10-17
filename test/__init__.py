@@ -285,15 +285,16 @@ def side_effect_function(*args, **kwargs):
                 if telemetry_type in ("logs", "spans"):
                     content = decode_object_from_protobuf(data, telemetry_type=telemetry_type)
                 else:
-                    content = data.hex()  # For other bytes, convert to hex            if content is not None:
-                with open(filepath, "w", encoding="utf-8") as f:
-                    if ext == "json":
-                        try:
-                            json_data = json.loads(content) if isinstance(content, str) else content
-                            json.dump(json_data, f, indent=2)
-                        except (json.JSONDecodeError, TypeError):
-                            f.write(content)
-                    else:
+                    content = data.hex()
+
+            with open(filepath, "w", encoding="utf-8") as f:
+                if ext == "json":
+                    try:
+                        json_data = json.loads(content) if isinstance(content, str) else content
+                        json.dump(json_data, f, indent=2)
+                    except (json.JSONDecodeError, TypeError):
                         f.write(content)
+                else:
+                    f.write(content)
 
     return mock_response

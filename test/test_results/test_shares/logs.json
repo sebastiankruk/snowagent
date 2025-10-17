@@ -16,6 +16,6 @@
   "snowflake.grant.name": "DATA_SCIENTIST_DEV_DB.ACCOUNT_EXPERIENCE",
   "snowflake.share.name": "BIET_MONITORING_SHARE",
   "dsoa.run.context": "inbound_shares",
-  "dsoa.run.id": "8108eddd5bc442ac9699e112a24857a3",
+  "dsoa.run.id": "236076ce22734c23aa14636f178cac36",
   "snowflake.share.has_details_reported": true
 }

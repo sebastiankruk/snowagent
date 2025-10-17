@@ -1,7 +1,7 @@
 {
   "content": "SQL query SUCCESS at DTAGENT_SKRUK_DB",
-  "observed_timestamp": "1760728401262964000",
-  "timestamp": "1760728401262964000",
+  "observed_timestamp": "1760729964567703000",
+  "timestamp": "1760729964567703000",
   "snowflake.data.written_to_result": 1781,
   "snowflake.rows.written_to_result": 60,
   "snowflake.time.compilation": 135,
@@ -24,5 +24,5 @@
   "snowflake.role.name": "DTAGENT_SKRUK_ADMIN",
   "snowflake.warehouse.name": "DTAGENT_SKRUK_WH",
   "dsoa.run.context": "active_queries",
-  "dsoa.run.id": "8cf67fc4a3a34da6981636362874d1e4"
+  "dsoa.run.id": "ffeac986b0cb47c0ae9142fca393971f"
 }

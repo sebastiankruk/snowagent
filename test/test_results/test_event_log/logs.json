@@ -1,9 +1,13 @@
 {
   "content": "UPDATE state.datasources SET last_transform = '2025-02-07 12:26:07.0', last_extract = '2025-02-07 12:26:07.0', last_extract_id = 1738922400000 WHERE datasource = 'Spine.UnassignedConsumption'",
   "observed_timestamp": 1738931596703718912,
-  "timestamp": "1760723568354173000",
-  "process.cpu.utilization": "kvlist_value {\n  values {\n    key: \"gauge\"\n    value {\n      int_value: 0\n    }\n  }\n}\n",
-  "process.memory.usage": "kvlist_value {\n  values {\n    key: \"sum\"\n    value {\n      int_value: 0\n    }\n  }\n}\n",
+  "timestamp": "1760729965804164000",
+  "process.cpu.utilization": {
+    "gauge": 0
+  },
+  "process.memory.usage": {
+    "sum": 0
+  },
   "db.namespace": "SPRINT_DB",
   "db.user": "SYSTEM",
   "snow.database.id": 621,
@@ -28,7 +32,7 @@
   "snowflake.warehouse.name": "SPRINT_ETL_PIPELINE_WH",
   "telemetry.sdk.language": "python",
   "dsoa.run.context": "event_log",
-  "dsoa.run.id": "99215dbd520a42d2aa1096e409d4022b",
+  "dsoa.run.id": "79dbfeefb307493891e419decc5c7cbc",
   "code.filepath": "_udf_code.py",
   "code.function": "send_log",
   "code.lineno": 982,
@@ -44,8 +48,12 @@
   "db.collection.name": "SPRINT_DB.STATE.DATASOURCES",
   "db.operation.name": "UPDATE",
   "db.query.text": "UPDATE state.datasources SET last_transform = '2025-02-07 12:26:07.0', last_extract = '2025-02-07 12:26:07.0', last_extract_id = 1738922400000 WHERE datasource = 'Spine.UnassignedConsumption'",
-  "db.snowflake.dbs": "array_value {\n  values {\n    string_value: \"SPRINT_DB\"\n  }\n}\n",
-  "db.snowflake.tables": "array_value {\n  values {\n    string_value: \"SPRINT_DB.STATE.DATASOURCES\"\n  }\n}\n",
+  "db.snowflake.dbs": [
+    "SPRINT_DB"
+  ],
+  "db.snowflake.tables": [
+    "SPRINT_DB.STATE.DATASOURCES"
+  ],
   "end_time": 1738931597092276978,
   "session.id": 22812680207694162,
   "snowagent.run.context": "query_history",
@@ -65,7 +73,13 @@
   "snowflake.query.hash_version": 2,
   "snowflake.query.parametrized_hash": "f54058eaf4569b014a656c4ad646646a",
   "snowflake.query.parametrized_hash_version": 1,
-  "snowflake.query.tag": "kvlist_value {\n  values {\n    key: \"action\"\n    value {\n      string_value: \"ingest\"\n    }\n  }\n  values {\n    key: \"js_id\"\n    value {\n      int_value: 8277366\n    }\n  }\n  values {\n    key: \"module\"\n    value {\n      string_value: \"consumption\"\n    }\n  }\n  values {\n    key: \"start_ts\"\n    value {\n      int_value: 1738931166455\n    }\n  }\n  values {\n    key: \"task\"\n    value {\n      string_value: \"UnassignedConsumption\"\n    }\n  }\n}\n",
+  "snowflake.query.tag": {
+    "action": "ingest",
+    "js_id": 8277366,
+    "module": "consumption",
+    "start_ts": 1738931166455,
+    "task": "UnassignedConsumption"
+  },
   "snowflake.query.transaction_id": 1738931171652000000,
   "snowflake.release_version": "9.1.18",
   "snowflake.role.type": "ROLE",

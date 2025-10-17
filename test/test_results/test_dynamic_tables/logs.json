@@ -1,7 +1,7 @@
 {
   "content": "dynamic_table_graph_history",
-  "observed_timestamp": "1760723568114820000",
-  "timestamp": "1760723568114820000",
+  "observed_timestamp": "1760729965543437000",
+  "timestamp": "1760729965543437000",
   "snowflake.table.dynamic.lag.max": 68,
   "snowflake.table.dynamic.lag.mean": 25,
   "snowflake.table.dynamic.lag.target.time_above": 13,
@@ -17,7 +17,7 @@
   "snowflake.schema.name": "DYNAMIC_TABLE_SCH",
   "snowflake.table.full_name": "DYNAMIC_TABLE_DB.DYNAMIC_TABLE_SCH.EMPLOYEE_DET",
   "dsoa.run.context": "dynamic_table_graph_history",
-  "dsoa.run.id": "36a768af5efb4caf838ba8444b5bd64d",
+  "dsoa.run.id": "4f52d4f4a99a49498c9c8636c77450fb",
   "snowflake.query.id": "01baf404-0413-a501-0040-e003057a220e",
   "snowflake.table.dynamic.graph.valid_from": 1732132427448000000,
   "snowflake.table.dynamic.refresh.action": "NO_DATA",
@@ -29,6 +29,17 @@
   "snowflake.table.dynamic.refresh.state": "SUCCEEDED",
   "snowflake.table.dynamic.refresh.trigger": "SCHEDULED",
   "db.query.text": "SELECT A.EMP_ID,A.EMP_NAME,A.EMP_ADDRESS, B.SKILL_ID,B.SKILL_NAME,B.SKILL_LEVEL\n    FROM EMPLOYEE A, EMPLOYEE_SKILL B\n    WHERE A.EMP_ID=B.EMP_ID\n    ORDER BY B.SKILL_ID ;",
-  "snowflake.table.dynamic.graph.alter_trigger": "array_value {\n  values {\n    string_value: \"CREATE_DYNAMIC_TABLE\"\n  }\n}\n",
-  "snowflake.table.dynamic.graph.inputs": "array_value {\n  values {\n    kvlist_value {\n      values {\n        key: \"kind\"\n        value {\n          string_value: \"TABLE\"\n        }\n      }\n      values {\n        key: \"name\"\n        value {\n          string_value: \"DYNAMIC_TABLE_DB.DYNAMIC_TABLE_SCH.EMPLOYEE\"\n        }\n      }\n    }\n  }\n  values {\n    kvlist_value {\n      values {\n        key: \"kind\"\n        value {\n          string_value: \"TABLE\"\n        }\n      }\n      values {\n        key: \"name\"\n        value {\n          string_value: \"DYNAMIC_TABLE_DB.DYNAMIC_TABLE_SCH.EMPLOYEE_SKILL\"\n        }\n      }\n    }\n  }\n}\n"
+  "snowflake.table.dynamic.graph.alter_trigger": [
+    "CREATE_DYNAMIC_TABLE"
+  ],
+  "snowflake.table.dynamic.graph.inputs": [
+    {
+      "kind": "TABLE",
+      "name": "DYNAMIC_TABLE_DB.DYNAMIC_TABLE_SCH.EMPLOYEE"
+    },
+    {
+      "kind": "TABLE",
+      "name": "DYNAMIC_TABLE_DB.DYNAMIC_TABLE_SCH.EMPLOYEE_SKILL"
+    }
+  ]
 }
