@@ -1,7 +1,7 @@
 {
   "content": "TrustCenter event: [CRITICAL] 3.1 Ensure that an account-level network policy has been configured to only allow access from trusted IP addresses",
-  "observed_timestamp": "1760723569776661000",
-  "timestamp": "1760723569776661000",
+  "observed_timestamp": "1760728403870656000",
+  "timestamp": "1760728403870656000",
   "event.start": 1758043265132000000,
   "event.end": 1758043272074000000,
   "status_code": "OK",
@@ -18,5 +18,5 @@
   "snowflake.trust_center.scanner.type": "Vulnerability",
   "vulnerability.risk.level": "CRITICAL",
   "dsoa.run.context": "trust_center",
-  "dsoa.run.id": "7f0c4b213def4414b6bd11c0bf24dad9"
+  "dsoa.run.id": "252598a81d294570b6cd9de1ba493279"
 }

@@ -161,7 +161,7 @@ def mock_telemetry_sending():
         yield
 
 
-def decode_object_from_protobuf(protobuf_bytes: bytes) -> str:
+def decode_object_from_protobuf(protobuf_bytes: bytes, telemetry_type: str = "logs") -> str:
     """
     Decode protobuf logs to extract key-value pairs from log bodies.
 
@@ -172,31 +172,53 @@ def decode_object_from_protobuf(protobuf_bytes: bytes) -> str:
         A dictionary representing the extracted key-value pairs.
     """
     from opentelemetry.proto.collector.logs.v1.logs_service_pb2 import ExportLogsServiceRequest
+    from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceRequest
 
-    request = ExportLogsServiceRequest()
+    def _extract_value(kv_pair):
+        value_field = kv_pair.value
+        if value_field.HasField("string_value"):
+            return value_field.string_value
+        elif value_field.HasField("int_value"):
+            return value_field.int_value
+        elif value_field.HasField("double_value"):
+            return value_field.double_value
+        elif value_field.HasField("bool_value"):
+            return value_field.bool_value
+        elif value_field.HasField("bytes_value"):
+            return value_field.bytes_value.hex()  # Convert bytes to hex string
+        elif value_field.HasField("array_value"):
+            return [_extract_value(v) for v in value_field.array_value.values]
+        elif value_field.HasField("kvlist_value"):
+            return {kv.key: _extract_value(kv) for kv in value_field.kvlist_value.values}
+        else:
+            return str(value_field)
+
+    request = ExportLogsServiceRequest() if telemetry_type == "logs" else ExportTraceServiceRequest()
     request.ParseFromString(protobuf_bytes)
 
     kv_data = {}
 
-    for resource_log in getattr(request, "resource_logs"):
-        for scope_log in resource_log.scope_logs:
-            for log_record in scope_log.log_records:
-                # Extract from body.kvlist_value.values
-                if log_record.body.HasField("kvlist_value"):
-                    for kv_pair in log_record.body.kvlist_value.values:
-                        key = kv_pair.key
-                        # Get the actual value based on the type
-                        if kv_pair.value.HasField("string_value"):
-                            value = kv_pair.value.string_value
-                        elif kv_pair.value.HasField("int_value"):
-                            value = kv_pair.value.int_value
-                        elif kv_pair.value.HasField("double_value"):
-                            value = kv_pair.value.double_value
-                        elif kv_pair.value.HasField("bool_value"):
-                            value = kv_pair.value.bool_value
-                        else:
-                            value = str(kv_pair.value)  # fallback
+    for resource in getattr(request, f"resource_{telemetry_type}"):
+        for scope in getattr(resource, f"scope_{telemetry_type}"):
+            for record in scope.log_records if telemetry_type == "logs" else scope.spans:
+                kv_pairs = None
+                if telemetry_type == "logs":
+                    if record.body.HasField("kvlist_value"):
+                        kv_pairs = record.body.kvlist_value.values
+                elif telemetry_type == "spans":
+                    kv_pairs = record.attributes
 
+                    for event in record.events:
+                        event_name = event.name
+                        kv_data[f"event_{event_name}_name"] = event_name
+                        for kv_pair in event.attributes:
+                            key = f"event_{event_name}_{kv_pair.key}"
+                            value = _extract_value(kv_pair)
+                            kv_data[key] = value
+                if kv_pairs:
+                    for kv_pair in kv_pairs:
+                        key = kv_pair.key
+                        value = _extract_value(kv_pair)
                         kv_data[key] = value
 
     return kv_data
@@ -261,7 +283,7 @@ def side_effect_function(*args, **kwargs):
                 content = data
             elif isinstance(data, bytes):
                 if telemetry_type in ("logs", "spans"):
-                    content = decode_object_from_protobuf(data)
+                    content = decode_object_from_protobuf(data, telemetry_type=telemetry_type)
             else:
                 content = str(data)
 

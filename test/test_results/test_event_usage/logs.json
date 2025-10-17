@@ -1,11 +1,11 @@
 {
   "content": "Event Usage",
-  "observed_timestamp": "1760723568557750000",
-  "timestamp": "1760723568557750000",
-  "event.start": 1760723568557750000,
-  "event.end": 1760723628557750000,
+  "observed_timestamp": "1760728402639554000",
+  "timestamp": "1760728402639554000",
+  "event.start": 1760728402639554000,
+  "event.end": 1760728462639554000,
   "snowflake.credits.used": 0.000215595,
   "snowflake.data.ingested": 736,
   "dsoa.run.context": "event_usage",
-  "dsoa.run.id": "6efc11569eda4914b6e52e858293859c"
+  "dsoa.run.id": "8cf67fc4a3a34da6981636362874d1e4"
 }

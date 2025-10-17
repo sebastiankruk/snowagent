@@ -1,7 +1,7 @@
 {
   "content": "New Tasks History entry for DTAGENT_DB",
-  "observed_timestamp": "1760723569544088000",
-  "timestamp": "1760723569544088000",
+  "observed_timestamp": "1760728403640568000",
+  "timestamp": "1760728403640568000",
   "snowflake.task.graph.root_id": "01bb391a-0307-d549-0000-000000000d22",
   "snowflake.task.graph.version": 2,
   "snowflake.task.run.attempt": 1,
@@ -14,5 +14,5 @@
   "snowflake.schema.name": "APP",
   "snowflake.task.name": "TASK_DTAGENT_DATA_SCHEMAS",
   "dsoa.run.context": "task_history",
-  "dsoa.run.id": "7188ea0fd243465c8d256cbb2017cb41"
+  "dsoa.run.id": "de99a58e876245eda3b9487d1704c41e"
 }

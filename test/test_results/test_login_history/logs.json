@@ -1,7 +1,7 @@
 {
   "content": "login_history",
-  "observed_timestamp": "1760723568756690000",
-  "timestamp": "1760723568756690000",
+  "observed_timestamp": "1760728402843930000",
+  "timestamp": "1760728402843930000",
   "authentiacation.factor.first": "PASSWORD",
   "client.version": "1.21.0",
   "event.id": 18260702004595858,
@@ -11,5 +11,5 @@
   "db.user": "SNOWAGENT_ADMIN",
   "event.name": "LOGIN",
   "dsoa.run.context": "login_history",
-  "dsoa.run.id": "daf0d55483a3414caf381e9bd5337bb4"
+  "dsoa.run.id": "f38e88e705eb43409fc94b3d51fa8770"
 }
