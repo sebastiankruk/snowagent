@@ -29,6 +29,7 @@ import logging
 import json
 import fnmatch
 import jsonstrip
+from unittest.mock import patch, Mock
 from snowflake import snowpark
 from dtagent.config import Configuration
 from dtagent.connector import TelemetrySender
@@ -73,17 +74,19 @@ def _pickle_data_history(
     print("Pickled " + str(pickle_name))
 
 
+@patch("snowflake.snowpark.Session.sql")
 def _logging_findings(
     session: snowpark.Session,
     dtagent,
     log_tag: str,
     log_level: logging,
-    show_detailed_logs: int,
+    show_detailed_logs: bool,
+    mock_sql=None,
 ):
 
     if log_level != "":
         logging.basicConfig(level=log_level)
-    if show_detailed_logs != 0:
+    if show_detailed_logs:
         from dtagent import LOG, LL_TRACE
 
         console_handler = logging.StreamHandler()  # Console handler
@@ -92,6 +95,15 @@ def _logging_findings(
         console_handler.setLevel(LL_TRACE)
 
         print(LOG.getEffectiveLevel())
+
+    # Mock session.sql and session.table to prevent actual Snowflake calls
+    current_time = datetime.datetime.now(datetime.timezone.utc)
+    one_hour_ago = current_time - datetime.timedelta(hours=1)
+    mock_sql_instance = Mock()
+    mock_row = Mock()
+    mock_row.__getitem__ = Mock(return_value=one_hour_ago)
+    mock_sql_instance.collect.return_value = [mock_row]
+    mock_sql.return_value = mock_sql_instance
 
     results = dtagent.process([str(log_tag)], False)
     print(f"!!!! RESULTS = {results}")
@@ -134,6 +146,9 @@ def _get_unpickled_entries(
 
     print(f"Unpickled {pickle_name}")
     #####
+    ndjson_name = os.path.splitext(pickle_name)[0] + ".ndjson"
+    collected_rows = []
+
     if limit is not None:
         if 0 < len(pandas_df) < limit:
             n_repeats = limit // len(pandas_df)
@@ -153,7 +168,13 @@ def _get_unpickled_entries(
         if adjust_ts:
             _adjust_timestamp(row_dict, start_time=start_time, end_time=end_time)
 
+        collected_rows.append(row_dict)
         yield row_dict
+
+    if not os.path.exists(ndjson_name):
+        with open(ndjson_name, "w", encoding="utf-8") as f:
+            for row in collected_rows:
+                f.write(json.dumps(row) + "\n")
 
 
 def should_pickle(pickle_files: list) -> bool:

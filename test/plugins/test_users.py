@@ -61,9 +61,7 @@ class TestUsers:
         # ======================================================================
 
         session = _get_session()
-        utils._logging_findings(
-            session, TestDynatraceSnowAgent(session, utils.get_config()), "test_users", logging.INFO, show_detailed_logs=0
-        )
+        utils._logging_findings(session, TestDynatraceSnowAgent(session, utils.get_config()), "test_users", logging.INFO, False)
 
 
 if __name__ == "__main__":

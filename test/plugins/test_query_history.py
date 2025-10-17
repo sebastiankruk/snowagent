@@ -89,9 +89,7 @@ class TestQueryHist:
 
         session = _get_session()
         # when sending spans log level cannot be set, hence "" to omit it in the utils
-        utils._logging_findings(
-            session, TestSpanDynatraceSnowAgent(session, utils.get_config()), "test_query_history", logging.INFO, show_detailed_logs=0
-        )
+        utils._logging_findings(session, TestSpanDynatraceSnowAgent(session, utils.get_config()), "test_query_history", logging.INFO, False)
 
 
 if __name__ == "__main__":

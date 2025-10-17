@@ -57,9 +57,7 @@ class TestTasks:
 
         import logging
 
-        utils._logging_findings(
-            session, TestDynatraceSnowAgent(session, utils.get_config()), "test_tasks", logging.INFO, show_detailed_logs=1
-        )
+        utils._logging_findings(session, TestDynatraceSnowAgent(session, utils.get_config()), "test_tasks", logging.INFO, True)
 
 
 if __name__ == "__main__":

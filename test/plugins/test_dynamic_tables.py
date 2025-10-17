@@ -56,9 +56,7 @@ class TestDynamicTables:
         # ======================================================================
         session = _get_session()
 
-        utils._logging_findings(
-            session, TestDynatraceSnowAgent(session, utils.get_config()), "test_dynamic_tables", logging.DEBUG, show_detailed_logs=1
-        )
+        utils._logging_findings(session, TestDynatraceSnowAgent(session, utils.get_config()), "test_dynamic_tables", logging.DEBUG, True)
 
 
 if __name__ == "__main__":
