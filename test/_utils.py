@@ -349,10 +349,7 @@ def telemetry_test_sender(
         Tuple[int, int, int, int]: Count of objects, log lines, metrics, events, and bizevents sent
     """
     sender = LocalTelemetrySender(session, params, limit_results=limit_results, config=config)
-    if is_local_testing():
-        with mock_telemetry_sending():
-            results = sender.send_data(sources)
-    else:
+    with mock_telemetry_sending():
         results = sender.send_data(sources)
     sender.teardown()
 

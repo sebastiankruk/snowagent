@@ -97,7 +97,7 @@ class TestTelemetrySender:
         assert results[-1] == rows_cnt  # bizevents
 
     def test_dtagent_bizevents(self):
-        from test._utils import mock_telemetry_sending, is_local_testing
+        from test._utils import mock_telemetry_sending
 
         session = _get_session()
 
@@ -114,11 +114,7 @@ class TestTelemetrySender:
                 "dsoa.task.exec.status": "FINISHED",
             }
         ]
-        if is_local_testing():
-
-            with mock_telemetry_sending():
-                results = sender.send_data(data)
-        else:
+        with mock_telemetry_sending():
             results = sender.send_data(data)
 
         sender.teardown()
