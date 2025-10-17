@@ -131,7 +131,7 @@ class TelemetrySender(AbstractDynatraceSnowAgentConnector, Plugin):
         # in case of auto-mode disabled we will send the source as bizevents
         self._send_bizevents = self._params.get("bizevents", False)
 
-    def process(self):
+    def process(self, run_proc: bool = True) -> None:
         """we don't use it but Plugin marks it as abstract"""
 
         return None
@@ -139,7 +139,7 @@ class TelemetrySender(AbstractDynatraceSnowAgentConnector, Plugin):
     def _get_source_rows(self, source: Union[str, dict, list]) -> Generator[Dict, None, None]:
         """Delivers generator over different types of sources.
         For a name of view/table to query it will use _get_table_rows().
-        For a single object it will wrap it as a list and will continute to ...
+        For a single object it will wrap it as a list and will continue to ...
         For a list of objects it will deliver a generator over that list.
 
         Args:
@@ -160,7 +160,9 @@ class TelemetrySender(AbstractDynatraceSnowAgentConnector, Plugin):
             for row_dict in source:
                 yield row_dict
 
-    def send_data(self, source: Union[str, dict, list], exec_id: str = get_now_timestamp_formatted()) -> Tuple[int, int, int, int, int]:
+    def send_data(
+        self, source_data: Union[str, dict, list], exec_id: str = get_now_timestamp_formatted()
+    ) -> Tuple[int, int, int, int, int]:
         """Sends telemetry data from given source based on the parameters provided to the stored procedure
 
         Args:
@@ -176,7 +178,7 @@ class TelemetrySender(AbstractDynatraceSnowAgentConnector, Plugin):
         entries_cnt, logs_cnt, metrics_cnt, events_cnt, bizevents_cnt = (0, 0, 0, 0, 0)
         if self._auto_mode:
             entries_cnt, logs_cnt, metrics_cnt, events_cnt = self._log_entries(
-                lambda: self._get_source_rows(source),
+                lambda: self._get_source_rows(source_data),
                 self.__context_name,
                 report_logs=self._send_logs,
                 report_metrics=self._send_metrics,
@@ -186,7 +188,7 @@ class TelemetrySender(AbstractDynatraceSnowAgentConnector, Plugin):
             )
         else:
             if self._send_logs or self._send_events:
-                for row_dict in self._get_source_rows(source):
+                for row_dict in self._get_source_rows(source_data):
                     from dtagent.util import _cleanup_dict  # COMPILE_REMOVE
 
                     processed_last_timestamp = row_dict.get("timestamp", None)
@@ -214,11 +216,11 @@ class TelemetrySender(AbstractDynatraceSnowAgentConnector, Plugin):
                             from dtagent import LOG  # COMPILE_REMOVE
 
                             self.report_execution_status(status="FAILED", task_name="telemetry_sender", exec_id=exec_id)
-                            LOG.error("Could not send event due to " + e)
+                            LOG.error("Could not send event due to %s", e)
 
                     entries_cnt += 1
             else:
-                entries_cnt = sum(1 for _ in self._get_source_rows(source))
+                entries_cnt = sum(1 for _ in self._get_source_rows(source_data))
 
             if self._send_bizevents:
                 import itertools
@@ -230,7 +232,7 @@ class TelemetrySender(AbstractDynatraceSnowAgentConnector, Plugin):
                     while chunk := list(itertools.islice(it, size)):
                         yield chunk
 
-                for chunk in __chunked_iterable(self._get_source_rows(source), chunk_size):
+                for chunk in __chunked_iterable(self._get_source_rows(source_data), chunk_size):
                     bizevents_cnt += self._bizevents.report_via_api(
                         chunk,
                         self.__context,

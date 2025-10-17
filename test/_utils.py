@@ -29,6 +29,7 @@ import logging
 import json
 import fnmatch
 import jsonstrip
+from contextlib import contextmanager
 from unittest.mock import patch, Mock
 from snowflake import snowpark
 from dtagent.config import Configuration
@@ -38,6 +39,87 @@ from dtagent.util import is_select_for_table
 from test import is_local_testing
 
 TEST_CONFIG_FILE_NAME = "./test/conf/config-download.json"
+
+
+def side_effect_function(*args, **kwargs):
+    import inspect
+    from unittest.mock import MagicMock
+    from dtagent.otel.bizevents import BizEvents
+    from dtagent.otel.events import Events
+    from dtagent.otel.logs import Logs
+    from dtagent.otel.metrics import Metrics
+    from dtagent.otel.spans import Spans
+
+    # Inspect the call stack to find the 'source' variable from DynatraceSnowAgent.process()
+    source_context = None
+    frame = inspect.currentframe()
+    while frame:
+        if "source" in frame.f_locals and isinstance(frame.f_locals["source"], str) and frame.f_locals["source"].startswith("test_"):
+            source_context = frame.f_locals["source"]
+            break
+        frame = frame.f_back
+
+    # Handle both requests.post mocks (args[0] is url) and CustomLoggingSession.send mocks (args[0] is request)
+    if hasattr(args[0], "url"):
+        # CustomLoggingSession.send: args[0] is request object
+        url = args[0].url
+        data = args[0].body
+    else:
+        # requests.post: args[0] is url string
+        url = args[0]
+        data = kwargs.get("data")
+
+    # Determine telemetry_type based on url and set up mock response
+    mock_response = MagicMock()
+    telemetry_type = None
+
+    if url.endswith(BizEvents.ENDPOINT_PATH):
+        telemetry_type = "biz_events"
+        mock_response.status_code = 202
+        # we skip self-monitoring entries saving
+        if (isinstance(data, list) and any(item.get("data", {}).get("dsoa.run.context") == "self-monitoring" for item in data)) or (
+            isinstance(data, str) and ' "dsoa.run.context": "self-monitoring"' in data
+        ):
+            data = None
+    elif url.endswith(Events.ENDPOINT_PATH):
+        telemetry_type = "events"
+        mock_response.status_code = 201
+    elif url.endswith(Logs.ENDPOINT_PATH):
+        telemetry_type = "logs"
+        mock_response.status_code = 200
+    elif url.endswith(Spans.ENDPOINT_PATH):
+        telemetry_type = "spans"
+        mock_response.status_code = 200
+    elif url.endswith(Metrics.ENDPOINT_PATH):
+        telemetry_type = "metrics"
+        mock_response.status_code = 202
+
+    if data and telemetry_type and source_context:
+        ext = "txt" if telemetry_type == "metrics" else "json"
+        filepath = f"test/test_results/{source_context}/{telemetry_type}.{ext}"
+
+        if not os.path.exists(filepath):
+            os.makedirs(os.path.dirname(filepath), exist_ok=True)
+
+            if isinstance(data, (dict, str)):
+                content = data
+            elif isinstance(data, bytes):
+                content = data.decode("utf-8")
+            else:
+                content = str(data)
+
+            with open(filepath, "w", encoding="utf-8") as f:
+                if ext == "json":
+                    # Parse and pretty-print as JSON
+                    try:
+                        json_data = json.loads(content) if isinstance(content, str) else content
+                        json.dump(json_data, f, indent=2)
+                    except (json.JSONDecodeError, TypeError):
+                        f.write(content)
+                else:
+                    f.write(content)
+
+    return mock_response
 
 
 def _pickle_all(session: snowpark.Session, pickles: dict, force: bool = False):
@@ -231,6 +313,33 @@ class LocalTelemetrySender(TelemetrySender):
         self._logs._otel_logger_provider.force_flush()
 
 
+@contextmanager
+def mock_telemetry_sending():
+    with patch("dtagent.otel.otel_manager.CustomLoggingSession.send") as mock_otel, patch(
+        "dtagent.otel.metrics.requests.post"
+    ) as mock_metrics, patch("dtagent.otel.events.requests.post") as mock_events, patch(
+        "dtagent.otel.bizevents.requests.post"
+    ) as mock_bizevents, patch(
+        "snowflake.snowpark.Session.sql"
+    ) as mock_sql:
+        # Set up HTTP mocks
+        mock_otel.side_effect = side_effect_function
+        mock_metrics.side_effect = side_effect_function
+        mock_events.side_effect = side_effect_function
+        mock_bizevents.side_effect = side_effect_function
+
+        # Set up session.sql mock to prevent actual Snowflake calls
+        current_time = datetime.datetime.now(datetime.timezone.utc)
+        one_hour_ago = current_time - datetime.timedelta(hours=1)
+        mock_sql_instance = Mock()
+        mock_row = Mock()
+        mock_row.__getitem__ = Mock(return_value=one_hour_ago)
+        mock_sql_instance.collect.return_value = [mock_row]
+        mock_sql.return_value = mock_sql_instance
+
+        yield
+
+
 def telemetry_test_sender(
     session: snowpark.Session, sources: str, params: dict, limit_results: int = 2, config: TestConfiguration = None
 ) -> Tuple[int, int, int, int, int]:
@@ -240,7 +349,11 @@ def telemetry_test_sender(
         Tuple[int, int, int, int]: Count of objects, log lines, metrics, events, and bizevents sent
     """
     sender = LocalTelemetrySender(session, params, limit_results=limit_results, config=config)
-    results = sender.send_data(sources)
+    if is_local_testing():
+        with mock_telemetry_sending():
+            results = sender.send_data(sources)
+    else:
+        results = sender.send_data(sources)
     sender.teardown()
 
     return results

@@ -1,0 +1,24 @@
+{
+  "eventType": "CUSTOM_INFO",
+  "title": "Objects accessed by query 01b165f1-0604-1812-0040-e0030291d142 run by STEFAN.SCHWEIGER",
+  "properties": {
+    "timestamp": 1760693384845066000,
+    "snowflake.object.event": "snowflake.object.ddl",
+    "snowflake.query.start_time": 1704191128131000000,
+    "snowflake.query.id": "01b165f1-0604-1812-0040-e0030291d142",
+    "snowflake.query.object.modified_by_ddl.domain": "Schema",
+    "snowflake.query.object.modified_by_ddl.id": 1154,
+    "snowflake.query.object.modified_by_ddl.name": "CHARGEBACK_HRC_TEST_DB.LI_TEST",
+    "snowflake.query.object.modified_by_ddl.operation_type": "CREATE",
+    "snowflake.query.user": "STEFAN.SCHWEIGER",
+    "db.system": "snowflake",
+    "service.name": "test.dsoa2025",
+    "deployment.environment": "TEST",
+    "host.name": "test.dsoa2025.snowflakecomputing.com",
+    "telemetry.exporter.version": "0.9.2.0",
+    "telemetry.exporter.name": "dynatrace.snowagent",
+    "dsoa.run.context": "data_schemas",
+    "dsoa.run.id": "7733b0b294054045be437696980a4d60"
+  },
+  "startTime": 1760693384845
+}

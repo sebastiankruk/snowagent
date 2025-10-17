@@ -54,20 +54,10 @@ class TestTelemetrySender:
     * sending all data from a given (custom structure) view as logs, events, and bizevents
     """
 
-    @patch("dtagent.otel.otel_manager.CustomLoggingSession.send")
-    @patch("dtagent.otel.metrics.requests.post")
-    @patch("dtagent.otel.events.requests.post")
-    @patch("dtagent.otel.bizevents.requests.post")
-    def test_viewsend(self, mock_bizevents_post, mock_events_post, mock_metrics_post, mock_otel_post):
+    def test_viewsend(self):  # ):
         import random
 
         rows_cnt = random.randint(10, 20)
-        mock_events_post.side_effect = side_effect_function
-        mock_bizevents_post.side_effect = side_effect_function
-        mock_metrics_post.side_effect = side_effect_function
-        mock_otel_post.side_effect = side_effect_function
-        mock_metrics_post.side_effect = side_effect_function
-        mock_otel_post.side_effect = side_effect_function
 
         session = _get_session()
         results = telemetry_test_sender(
@@ -83,18 +73,10 @@ class TestTelemetrySender:
         assert results[-2] == rows_cnt  # events
         assert results[-1] == rows_cnt  # bizevents
 
-    @patch("dtagent.otel.otel_manager.CustomLoggingSession.send")
-    @patch("dtagent.otel.metrics.requests.post")
-    @patch("dtagent.otel.events.requests.post")
-    @patch("dtagent.otel.bizevents.requests.post")
-    def test_large_view_send_as_be(self, mock_bizevents_post, mock_events_post, mock_metrics_post, mock_otel_post):
+    def test_large_view_send_as_be(self):
         import random
 
         rows_cnt = random.randint(410, 500)
-        mock_events_post.side_effect = side_effect_function
-        mock_bizevents_post.side_effect = side_effect_function
-        mock_metrics_post.side_effect = side_effect_function
-        mock_otel_post.side_effect = side_effect_function
 
         LOG.debug("We will send %s rows as BizEvents", rows_cnt)
 
@@ -114,15 +96,9 @@ class TestTelemetrySender:
         assert results[-2] == 0  # events
         assert results[-1] == rows_cnt  # bizevents
 
-    @patch("dtagent.otel.otel_manager.CustomLoggingSession.send")
-    @patch("dtagent.otel.metrics.requests.post")
-    @patch("dtagent.otel.events.requests.post")
-    @patch("dtagent.otel.bizevents.requests.post")
-    def test_dtagent_bizevents(self, mock_bizevents_post, mock_events_post, mock_metrics_post, mock_otel_post):
-        mock_events_post.side_effect = side_effect_function
-        mock_bizevents_post.side_effect = side_effect_function
-        mock_metrics_post.side_effect = side_effect_function
-        mock_otel_post.side_effect = side_effect_function
+    def test_dtagent_bizevents(self):
+        from test._utils import mock_telemetry_sending, is_local_testing
+
         session = _get_session()
 
         sender = LocalTelemetrySender(
@@ -130,29 +106,26 @@ class TestTelemetrySender:
             {"auto_mode": False, "logs": False, "events": False, "bizevents": True},
             config=_utils.get_config(),
         )
-        results = sender.send_data(
-            [
-                {
-                    "event.provider": str(sender._configuration.get(context="resource.attributes", key="host.name")),
-                    "dsoa.task.exec.id": get_now_timestamp_formatted(),
-                    "dsoa.task.name": "test_events",
-                    "dsoa.task.exec.status": "FINISHED",
-                }
-            ]
-        )
+        data = [
+            {
+                "event.provider": str(sender._configuration.get(context="resource.attributes", key="host.name")),
+                "dsoa.task.exec.id": get_now_timestamp_formatted(),
+                "dsoa.task.name": "test_events",
+                "dsoa.task.exec.status": "FINISHED",
+            }
+        ]
+        if is_local_testing():
+
+            with mock_telemetry_sending():
+                results = sender.send_data(data)
+        else:
+            results = sender.send_data(data)
+
         sender.teardown()
 
         assert results[-1] == 1
 
-    @patch("dtagent.otel.otel_manager.CustomLoggingSession.send")
-    @patch("dtagent.otel.metrics.requests.post")
-    @patch("dtagent.otel.events.requests.post")
-    @patch("dtagent.otel.bizevents.requests.post")
-    def test_automode(self, mock_bizevents_post, mock_events_post, mock_metrics_post, mock_otel_post):
-        mock_events_post.side_effect = side_effect_function
-        mock_bizevents_post.side_effect = side_effect_function
-        mock_metrics_post.side_effect = side_effect_function
-        mock_otel_post.side_effect = side_effect_function
+    def test_automode(self):
         session = _get_session()
 
         structured_test_data = read_clean_json_from_file("test/test_data/telemetry_structured.json")
