@@ -23,6 +23,7 @@
 #
 import json
 import os
+from contextlib import contextmanager
 from typing import Any, Dict, List
 import functools
 import datetime
@@ -110,8 +111,6 @@ class TestDynatraceSnowAgent(DynatraceSnowAgent):
 
         OtelManager.reset_current_fail_count()
         if is_local_testing():
-            from test._utils import mock_telemetry_sending
-
             with mock_telemetry_sending():
                 return super().process(sources, run_proc)
         else:
@@ -122,6 +121,33 @@ def _overwrite_plugin_local_config_key(test_conf: TestConfiguration, plugin_name
     # added to make sure we always run tests for each mode in users plugin
     test_conf._config["plugins"][plugin_name][key_name] = new_value
     return test_conf
+
+
+@contextmanager
+def mock_telemetry_sending():
+    with patch("dtagent.otel.otel_manager.CustomLoggingSession.send") as mock_otel, patch(
+        "dtagent.otel.metrics.requests.post"
+    ) as mock_metrics, patch("dtagent.otel.events.requests.post") as mock_events, patch(
+        "dtagent.otel.bizevents.requests.post"
+    ) as mock_bizevents, patch(
+        "snowflake.snowpark.Session.sql"
+    ) as mock_sql:
+        # Set up HTTP mocks
+        mock_otel.side_effect = side_effect_function
+        mock_metrics.side_effect = side_effect_function
+        mock_events.side_effect = side_effect_function
+        mock_bizevents.side_effect = side_effect_function
+
+        # Set up session.sql mock to prevent actual Snowflake calls
+        current_time = datetime.datetime.now(datetime.timezone.utc)
+        one_hour_ago = current_time - datetime.timedelta(hours=1)
+        mock_sql_instance = Mock()
+        mock_row = Mock()
+        mock_row.__getitem__ = Mock(return_value=one_hour_ago)
+        mock_sql_instance.collect.return_value = [mock_row]
+        mock_sql.return_value = mock_sql_instance
+
+        yield
 
 
 def side_effect_function(*args, **kwargs):
