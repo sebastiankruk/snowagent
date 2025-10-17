@@ -175,7 +175,7 @@ def decode_object_from_protobuf(protobuf_bytes: bytes, telemetry_type: str = "lo
     from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceRequest
 
     def _extract_value(kv_pair):
-        value_field = kv_pair.value
+        value_field = getattr(kv_pair, "value", kv_pair)
         if value_field.HasField("string_value"):
             return value_field.string_value
         elif value_field.HasField("int_value"):
@@ -284,10 +284,8 @@ def side_effect_function(*args, **kwargs):
             elif isinstance(data, bytes):
                 if telemetry_type in ("logs", "spans"):
                     content = decode_object_from_protobuf(data, telemetry_type=telemetry_type)
-            else:
-                content = str(data)
-
-            if content is not None:
+                else:
+                    content = data.hex()  # For other bytes, convert to hex            if content is not None:
                 with open(filepath, "w", encoding="utf-8") as f:
                     if ext == "json":
                         try:
