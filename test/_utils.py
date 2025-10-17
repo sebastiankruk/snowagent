@@ -35,6 +35,7 @@ from dtagent.config import Configuration
 from dtagent.connector import TelemetrySender
 from dtagent import config
 from dtagent.util import is_select_for_table
+from test import is_local_testing
 
 TEST_CONFIG_FILE_NAME = "./test/conf/config-download.json"
 
@@ -74,14 +75,12 @@ def _pickle_data_history(
     print("Pickled " + str(pickle_name))
 
 
-@patch("snowflake.snowpark.Session.sql")
 def _logging_findings(
     session: snowpark.Session,
     dtagent,
     log_tag: str,
     log_level: logging,
     show_detailed_logs: bool,
-    mock_sql=None,
 ):
 
     if log_level != "":
@@ -96,16 +95,8 @@ def _logging_findings(
 
         print(LOG.getEffectiveLevel())
 
-    # Mock session.sql and session.table to prevent actual Snowflake calls
-    current_time = datetime.datetime.now(datetime.timezone.utc)
-    one_hour_ago = current_time - datetime.timedelta(hours=1)
-    mock_sql_instance = Mock()
-    mock_row = Mock()
-    mock_row.__getitem__ = Mock(return_value=one_hour_ago)
-    mock_sql_instance.collect.return_value = [mock_row]
-    mock_sql.return_value = mock_sql_instance
-
     results = dtagent.process([str(log_tag)], False)
+
     print(f"!!!! RESULTS = {results}")
 
     dtagent.teardown()

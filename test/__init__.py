@@ -24,6 +24,9 @@
 import json
 import os
 from typing import Any, Dict, List
+import functools
+import datetime
+from unittest.mock import patch, Mock
 
 from snowflake import snowpark
 
@@ -39,6 +42,7 @@ read_secret(
 )
 
 
+@functools.lru_cache(maxsize=1)
 def _get_credentials() -> Dict:
     """
     {
@@ -47,7 +51,6 @@ def _get_credentials() -> Dict:
         "password": "<your snowflake password>",
         "role": "<your snowflake role>",  # Optional
         "warehouse": "<your snowflake warehouse>",  # Optional
-        "database": "<your snowflake database>",  # Optional
         "schema": "<your snowflake schema>"  # Optional
     }
     """
@@ -56,7 +59,12 @@ def _get_credentials() -> Dict:
     if os.path.isfile(credentials_path):
         with open(credentials_path, "r", encoding="utf-8") as f:
             credentials = json.loads(f.read())
+
     return credentials or {"local_testing": True}
+
+
+def is_local_testing() -> bool:
+    return _get_credentials().get("local_testing", False)
 
 
 def _get_session() -> snowpark.Session:
@@ -80,7 +88,6 @@ class TestConfiguration(Configuration):
 
 
 class TestDynatraceSnowAgent(DynatraceSnowAgent):
-    from unittest.mock import patch
 
     def __init__(self, session: snowpark.Session, config: Configuration) -> None:
         self._local_configuration = config
@@ -94,27 +101,40 @@ class TestDynatraceSnowAgent(DynatraceSnowAgent):
             ["DIRECT_ROLES", "ALL_ROLES", "ALL_PRIVILEGES"],
         )
 
-    @patch("dtagent.otel.otel_manager.CustomLoggingSession.send")
-    @patch("dtagent.otel.metrics.requests.post")
-    @patch("dtagent.otel.events.requests.post")
-    @patch("dtagent.otel.bizevents.requests.post")
     def process(
         self,
         sources: List,
         run_proc: bool = True,
-        mock_bizevents_post=None,
-        mock_events_post=None,
-        mock_metrics_post=None,
-        mock_otel_post=None,
     ) -> Dict:
         from dtagent.otel.otel_manager import OtelManager
 
         OtelManager.reset_current_fail_count()
-        mock_events_post.side_effect = side_effect_function
-        mock_bizevents_post.side_effect = side_effect_function
-        mock_metrics_post.side_effect = side_effect_function
-        mock_otel_post.side_effect = side_effect_function
-        return super().process(sources, run_proc)
+        if is_local_testing():
+            with patch("dtagent.otel.otel_manager.CustomLoggingSession.send") as mock_otel, patch(
+                "dtagent.otel.metrics.requests.post"
+            ) as mock_metrics, patch("dtagent.otel.events.requests.post") as mock_events, patch(
+                "dtagent.otel.bizevents.requests.post"
+            ) as mock_bizevents, patch(
+                "snowflake.snowpark.Session.sql"
+            ) as mock_sql:
+                # Set up HTTP mocks
+                mock_otel.side_effect = side_effect_function
+                mock_metrics.side_effect = side_effect_function
+                mock_events.side_effect = side_effect_function
+                mock_bizevents.side_effect = side_effect_function
+
+                # Set up session.sql mock to prevent actual Snowflake calls
+                current_time = datetime.datetime.now(datetime.timezone.utc)
+                one_hour_ago = current_time - datetime.timedelta(hours=1)
+                mock_sql_instance = Mock()
+                mock_row = Mock()
+                mock_row.__getitem__ = Mock(return_value=one_hour_ago)
+                mock_sql_instance.collect.return_value = [mock_row]
+                mock_sql.return_value = mock_sql_instance
+
+                return super().process(sources, run_proc)
+        else:
+            return super().process(sources, run_proc)
 
 
 def _overwrite_plugin_local_config_key(test_conf: TestConfiguration, plugin_name: str, key_name: str, new_value: Any):
