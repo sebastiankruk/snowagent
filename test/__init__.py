@@ -24,6 +24,7 @@
 import json
 import os
 from contextlib import contextmanager
+import re
 from typing import Any, Dict, List
 import functools
 import datetime
@@ -112,16 +113,19 @@ class TestDynatraceSnowAgent(DynatraceSnowAgent):
     ) -> Dict:
         from dtagent.otel.otel_manager import OtelManager
 
+        process_results = {}
+
         OtelManager.reset_current_fail_count()
         if is_local_testing():
             _current_test_source[0] = sources[0] if sources else None
-            try:
-                with mock_telemetry_sending():
-                    return super().process(sources, run_proc)
-            finally:
-                _current_test_source[0] = None
+            with mock_telemetry_sending():
+                process_results = super().process(sources, run_proc)
+                self._logs.shutdown_logger()
+                self._spans.shutdown_tracer()
         else:
-            return super().process(sources, run_proc)
+            process_results = super().process(sources, run_proc)
+
+        return process_results
 
 
 def _overwrite_plugin_local_config_key(test_conf: TestConfiguration, plugin_name: str, key_name: str, new_value: Any):
