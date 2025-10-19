@@ -45,12 +45,34 @@ class MockTelemetryClient:
         self.is_test_results_missing = not self.expected_results
         self.test_results: Dict[str, List[Any]] = {}
 
-    def store_test_results(self):
+    def store_or_test_results(self):
         """
         Store the collected test results into files for future reference.
         """
-        for telemetry_type, content in self.test_results.items():
-            self._save_telemetry_test_data(telemetry_type, content)
+        if self.is_test_results_missing:
+            for telemetry_type, content in self.test_results.items():
+                self._save_telemetry_test_data(telemetry_type, content)
+        else:
+            # otherwise we will test if save_test_results would match expected results
+            for telemetry_type, expected_content in self.expected_results.items():
+                actual_content = self.test_results.get(telemetry_type, [])
+
+                # Sort both lists for comparison, handling dicts by serializing with sorted keys
+                def sort_key(item):
+                    if isinstance(item, dict):
+                        return json.dumps(item, sort_keys=True)
+                    return str(item)
+
+                sorted_actual = sorted("\n".join(actual_content) if telemetry_type == "metrics" else actual_content, key=sort_key)
+                sorted_expected = sorted(expected_content, key=sort_key)
+                if self.test_source == "test_shares":
+                    assert all(
+                        item in sorted_expected for item in sorted_actual
+                    ), f"Telemetry type {telemetry_type} does not match expected results (actual must be subset of expected):\n\n{expected_content}\n\nvs\n\n{actual_content}"
+                else:
+                    assert (
+                        sorted_actual == sorted_expected
+                    ), f"Telemetry type {telemetry_type} does not match expected results:\n\n{expected_content}\n\nvs\n\n{actual_content}"
 
     @contextmanager
     def mock_telemetry_sending(self):
@@ -254,11 +276,6 @@ class MockTelemetryClient:
             if url.endswith(BizEvents.ENDPOINT_PATH):
                 telemetry_type = "biz_events"
                 mock_response.status_code = 202
-                # we skip self-monitoring entries saving
-                # if (isinstance(data, list) and any(item.get("data", {}).get("dsoa.run.context") == "self-monitoring" for item in data)) or (
-                #     isinstance(data, str) and ' "dsoa.run.context": "self-monitoring"' in data
-                # ):
-                #     data = None
             elif url.endswith(Events.ENDPOINT_PATH):
                 telemetry_type = "events"
                 mock_response.status_code = 201
@@ -379,9 +396,10 @@ class MockTelemetryClient:
                         item = "\n".join(processed_lines)
                     elif isinstance(item, dict):
                         item = __cleanup_telemetry_dict(item)
+
                     self.test_results[telemetry_type].append(item)
 
-        # TODO if content does not exist in self.expected_test_results,
-        # we should return mock_response.status_code = 404 or raise an error
+                    if item not in self.expected_results.get(telemetry_type, []):
+                        mock_response.status_code = 500
 
         return mock_response

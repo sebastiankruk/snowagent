@@ -73,7 +73,6 @@
     "snowflake.role.name": "DTAGENT_ADMIN",
     "snowflake.warehouse.name": "DTAGENT_WH",
     "dsoa.run.context": "query_history",
-    "dsoa.run.id": "a61e6b564c844b0f95c8e5971772c476",
     "dsoa.debug.span.events.added": 0,
     "dsoa.debug.span.events.failed": 0
   }

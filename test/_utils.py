@@ -248,7 +248,7 @@ def telemetry_test_sender(
     with mock_client.mock_telemetry_sending():
         results = sender.send_data(sources)
         sender.teardown()
-    mock_client.store_test_results()
+    mock_client.store_or_test_results()
 
     return results
 

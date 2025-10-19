@@ -24,7 +24,6 @@
     "snowflake.warehouse.name": "DTAGENT_SKRUK_WH",
     "telemetry.sdk.language": "sql",
     "dsoa.run.context": "event_log_spans",
-    "dsoa.run.id": "a79e485ea28945b78d1af4601b62ac19",
     "dsoa.debug.span.events.added": 0,
     "dsoa.debug.span.events.failed": 0
   }

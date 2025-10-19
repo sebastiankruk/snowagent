@@ -121,7 +121,7 @@ class TestDynatraceSnowAgent(DynatraceSnowAgent):
                 process_results = super().process(sources, run_proc)
                 self._logs.shutdown_logger()
                 self._spans.shutdown_tracer()
-            mock_client.store_test_results()
+            mock_client.store_or_test_results()
         else:
             process_results = super().process(sources, run_proc)
 

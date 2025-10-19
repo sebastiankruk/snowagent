@@ -121,7 +121,7 @@ class TestEvents:
             )
 
             assert events.flush_events()
-        mock_client.store_test_results()
+        mock_client.store_or_test_results()
 
     def test_send_bizevents_directly(self):
         import time
@@ -180,7 +180,7 @@ class TestEvents:
             events_sent += new_events_sent
 
             assert events_sent == 5
-        mock_client.store_test_results()
+        mock_client.store_or_test_results()
 
     def test_send_results_as_events(self):
         from test import _utils
@@ -199,7 +199,7 @@ class TestEvents:
                 )
 
             assert events.flush_events()
-        mock_client.store_test_results()
+        mock_client.store_or_test_results()
 
     def test_send_results_as_bizevents(self):
         from test import _utils
@@ -219,7 +219,7 @@ class TestEvents:
             events_sent += bizevents.flush_events()
 
             assert events_sent == 2
-        mock_client.store_test_results()
+        mock_client.store_or_test_results()
 
     def test_dtagent_bizevents(self):
         mock_client = MockTelemetryClient("test_dtagent_bizevents")
@@ -243,4 +243,4 @@ class TestEvents:
             cnt += bizevents.flush_events()
 
             assert cnt == 1
-        mock_client.store_test_results()
+        mock_client.store_or_test_results()

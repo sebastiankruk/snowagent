@@ -117,7 +117,7 @@ class TestTelemetrySender:
         with mock_client.mock_telemetry_sending():
             results = sender.send_data(data)
             sender.teardown()
-        mock_client.store_test_results()
+        mock_client.store_or_test_results()
 
         assert results[-1] == 1
 
