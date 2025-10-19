@@ -1,8 +1,6 @@
 [
   {
     "content": "TrustCenter event: [CRITICAL] 3.1 Ensure that an account-level network policy has been configured to only allow access from trusted IP addresses",
-    "event.start": 1758043265132000000,
-    "event.end": 1758043272074000000,
     "status_code": "OK",
     "error.code": "SECURITY_ESSENTIALS_CIS3_1",
     "event.id": 252010,

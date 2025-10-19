@@ -37,7 +37,6 @@
         "k": "v",
         "k2": 2
       },
-      "observed_at": "2025-10-19T17:35:31.005Z",
       "event.type": "CUSTOM_INFO",
       "app.bundle": "telemetry_sender",
       "app.id": "dynatrace.snowagent",

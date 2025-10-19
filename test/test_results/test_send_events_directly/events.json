@@ -19,7 +19,6 @@
       "test.event.dtagent.bool": true,
       "test.event.dtagent.list": "[1, 2, 3]",
       "test.event.dtagent.dict": "{\"k1\": \"v1\", \"k2\": 2}",
-      "test.event.dtagent.datetime": "\"2025-10-19 17:35:17.772921+00:00\"",
       "db.system": "snowflake",
       "service.name": "test.dsoa2025",
       "deployment.environment": "TEST",
@@ -52,7 +51,8 @@
       "host.name": "test.dsoa2025.snowflakecomputing.com",
       "telemetry.exporter.name": "dynatrace.snowagent"
     },
-    "timeout": 15
+    "timeout": 15,
+    "startTime": 1760896529782
   },
   {
     "eventType": "CUSTOM_DEPLOYMENT",
@@ -65,7 +65,7 @@
       "host.name": "test.dsoa2025.snowflakecomputing.com",
       "telemetry.exporter.name": "dynatrace.snowagent"
     },
-    "endTime": 1760896217782
+    "endTime": 1760898029782
   },
   {
     "eventType": "CUSTOM_DEPLOYMENT",
@@ -79,6 +79,6 @@
       "telemetry.exporter.name": "dynatrace.snowagent",
       "dsoa.run.context": "data_volume"
     },
-    "endTime": 1760896217782
+    "endTime": 1760898029782
   }
 ]

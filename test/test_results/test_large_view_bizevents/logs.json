@@ -1,8 +1,8 @@
 [
   {
     "content": "New entry to STATUS.LOG_PROCESSED_MEASUREMENTS from telemetry_sender",
-    "entries": 446,
-    "bizevents": 446,
+    "entries": 498,
+    "bizevents": 498,
     "dsoa.run.context": "self_monitoring"
   }
 ]

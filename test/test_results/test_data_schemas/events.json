@@ -15,10 +15,10 @@
       "service.name": "test.dsoa2025",
       "deployment.environment": "TEST",
       "host.name": "test.dsoa2025.snowflakecomputing.com",
-      "telemetry.exporter.version": "0.9.2.0",
       "telemetry.exporter.name": "dynatrace.snowagent",
       "dsoa.run.context": "data_schemas"
-    }
+    },
+    "startTime": 1760893537576
   },
   {
     "eventType": "CUSTOM_INFO",
@@ -37,9 +37,9 @@
       "service.name": "test.dsoa2025",
       "deployment.environment": "TEST",
       "host.name": "test.dsoa2025.snowflakecomputing.com",
-      "telemetry.exporter.version": "0.9.2.0",
       "telemetry.exporter.name": "dynatrace.snowagent",
       "dsoa.run.context": "data_schemas"
-    }
+    },
+    "startTime": 1760893537631
   }
 ]

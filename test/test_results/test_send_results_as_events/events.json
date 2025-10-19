@@ -15,7 +15,8 @@
       "deployment.environment": "TEST",
       "host.name": "test.dsoa2025.snowflakecomputing.com",
       "telemetry.exporter.name": "dynatrace.snowagent"
-    }
+    },
+    "startTime": 1760893589794
   },
   {
     "eventType": "CUSTOM_INFO",
@@ -35,6 +36,7 @@
       "deployment.environment": "TEST",
       "host.name": "test.dsoa2025.snowflakecomputing.com",
       "telemetry.exporter.name": "dynatrace.snowagent"
-    }
+    },
+    "startTime": 1760893589796
   }
 ]

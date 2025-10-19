@@ -23,6 +23,7 @@
 #
 import os
 import json
+import re
 import datetime
 from typing import Any, Dict, List
 from contextlib import contextmanager
@@ -309,15 +310,24 @@ class MockTelemetryClient:
             cleaned_dict = {
                 k: __cleanup_telemetry_dict(v) if isinstance(v, dict) else v
                 for k, v in data_dict.items()
-                if k
+                if k.lower()
                 not in (
                     # update by agent to fit the current run
                     "observed_timestamp",
+                    "observed_at",
                     "timestamp",
                     "end_time",
                     "start_time",
                     "time",
                     "startTime",
+                    "endTime",
+                    "event.start",
+                    "event.end",
+                    # from event tests
+                    "test.ts",
+                    "test.event.dtagent.start_time",
+                    "test.event.dtagent.end_time",
+                    "test.event.dtagent.datetime",
                     # id in biz events and events is unique per event
                     "id",
                     # each agent run has a different run id
@@ -359,7 +369,17 @@ class MockTelemetryClient:
                     self.test_results[telemetry_type] = []
 
                 for item in content if isinstance(content, list) else [content]:
-                    self.test_results[telemetry_type].append(__cleanup_telemetry_dict(item) if isinstance(item, dict) else item)
+                    if telemetry_type == "metrics" and isinstance(item, str):
+                        lines = item.split("\n")
+                        processed_lines = []
+                        for line in lines:
+                            if not line.strip().startswith("#"):
+                                line = re.sub(r"(\s\d{13})\s*$", " 0", line)
+                            processed_lines.append(line)
+                        item = "\n".join(processed_lines)
+                    elif isinstance(item, dict):
+                        item = __cleanup_telemetry_dict(item)
+                    self.test_results[telemetry_type].append(item)
 
         # TODO if content does not exist in self.expected_test_results,
         # we should return mock_response.status_code = 404 or raise an error

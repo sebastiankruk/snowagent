@@ -1,8 +1,6 @@
 [
   {
     "content": "Event Usage",
-    "event.start": 1760890733600368000,
-    "event.end": 1760890793600368000,
     "snowflake.credits.used": 0.000215595,
     "snowflake.data.ingested": 736,
     "dsoa.run.context": "event_usage"

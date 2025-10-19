@@ -8,15 +8,12 @@
       "dsoa.task.name": "test_shares",
       "dsoa.task.exec.status": "STARTED",
       "event.type": "dsoa.task",
-      "app.version": "0.9.2.0",
-      "app.short_version": "0.9.2",
       "app.bundle": "self-monitoring",
       "app.id": "dynatrace.snowagent",
       "db.system": "snowflake",
       "service.name": "test.dsoa2025",
       "deployment.environment": "TEST",
       "host.name": "test.dsoa2025.snowflakecomputing.com",
-      "telemetry.exporter.version": "0.9.2.0",
       "telemetry.exporter.name": "dynatrace.snowagent",
       "dsoa.run.context": "self-monitoring"
     }
@@ -30,15 +27,12 @@
       "dsoa.task.name": "test_shares",
       "dsoa.task.exec.status": "FINISHED",
       "event.type": "dsoa.task",
-      "app.version": "0.9.2.0",
-      "app.short_version": "0.9.2",
       "app.bundle": "self-monitoring",
       "app.id": "dynatrace.snowagent",
       "db.system": "snowflake",
       "service.name": "test.dsoa2025",
       "deployment.environment": "TEST",
       "host.name": "test.dsoa2025.snowflakecomputing.com",
-      "telemetry.exporter.version": "0.9.2.0",
       "telemetry.exporter.name": "dynatrace.snowagent",
       "dsoa.run.context": "self-monitoring"
     }

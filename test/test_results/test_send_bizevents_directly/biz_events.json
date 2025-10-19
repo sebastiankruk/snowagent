@@ -5,7 +5,6 @@
     "type": "dsoa.bizevent",
     "data": {
       "test.bizevent.message": "Dynatrace Snowflake Observability Agent test event 123",
-      "test.ts": "2025-10-19T17:35:17.787Z",
       "app.bundle": "bizevents",
       "app.id": "dynatrace.snowagent",
       "db.system": "snowflake",
@@ -54,7 +53,6 @@
     "type": "dsoa.bizevent",
     "data": {
       "test.event.dtagent.info": "10 min in the past",
-      "test.event.dtagent.start_time": 1760894717787,
       "app.bundle": "bizevents",
       "app.id": "dynatrace.snowagent",
       "db.system": "snowflake",
@@ -70,8 +68,6 @@
     "type": "dsoa.bizevent",
     "data": {
       "test.event.dtagent.info": "15 min in the future",
-      "test.event.dtagent.start_time": 1760894717787,
-      "test.event.dtagent.end_time": 1760896217787,
       "test.event.dtagent.timeout": 15,
       "app.bundle": "bizevents",
       "app.id": "dynatrace.snowagent",

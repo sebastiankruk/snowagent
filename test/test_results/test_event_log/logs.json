@@ -41,7 +41,6 @@
     "service.name": "test.dsoa2025",
     "deployment.environment": "TEST",
     "host.name": "test.dsoa2025.snowflakecomputing.com",
-    "telemetry.exporter.version": "0.9.2.0",
     "telemetry.exporter.name": "dynatrace.snowagent",
     "db.collection.name": "SPRINT_DB.STATE.DATASOURCES",
     "db.operation.name": "UPDATE",
