@@ -124,6 +124,7 @@ class MockTelemetryClient:
                         print(f"Error decoding JSON from {filepath}: {e}")
 
                 return f.read()
+        return None
 
     def _save_telemetry_test_data(self, telemetry_type: str, content: List[Union[str, dict, bytes]]) -> None:
         """

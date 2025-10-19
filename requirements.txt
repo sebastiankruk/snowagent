@@ -42,7 +42,10 @@ inflect
 markdown2
 weasyprint
 pyyaml
+# github tests
 pylint
 flake8
-pylint
+black
+sqlfluff
+yamllint
 #%:DEV
