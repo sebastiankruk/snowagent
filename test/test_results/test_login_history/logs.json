@@ -1,15 +1,14 @@
-{
-  "content": "login_history",
-  "observed_timestamp": "1760729966254871000",
-  "timestamp": "1760729966254871000",
-  "authentiacation.factor.first": "PASSWORD",
-  "client.version": "1.21.0",
-  "event.id": 18260702004595858,
-  "status.code": "OK",
-  "client.ip": "52.29.224.53",
-  "client.type": "OTHER",
-  "db.user": "SNOWAGENT_ADMIN",
-  "event.name": "LOGIN",
-  "dsoa.run.context": "login_history",
-  "dsoa.run.id": "9174f418f6584ee0833fa89e39c9fe2f"
-}
+[
+  {
+    "content": "login_history",
+    "authentiacation.factor.first": "PASSWORD",
+    "client.version": "1.21.0",
+    "event.id": 18260702004595858,
+    "status.code": "OK",
+    "client.ip": "52.29.224.53",
+    "client.type": "OTHER",
+    "db.user": "SNOWAGENT_ADMIN",
+    "event.name": "LOGIN",
+    "dsoa.run.context": "login_history"
+  }
+]

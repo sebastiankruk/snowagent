@@ -1,11 +1,10 @@
-{
-  "content": "Event Usage",
-  "observed_timestamp": "1760729966030147000",
-  "timestamp": "1760729966030147000",
-  "event.start": 1760729966030147000,
-  "event.end": 1760730026030147000,
-  "snowflake.credits.used": 0.000215595,
-  "snowflake.data.ingested": 736,
-  "dsoa.run.context": "event_usage",
-  "dsoa.run.id": "ffeac986b0cb47c0ae9142fca393971f"
-}
+[
+  {
+    "content": "Event Usage",
+    "event.start": 1760890733600368000,
+    "event.end": 1760890793600368000,
+    "snowflake.credits.used": 0.000215595,
+    "snowflake.data.ingested": 736,
+    "dsoa.run.context": "event_usage"
+  }
+]

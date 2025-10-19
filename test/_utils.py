@@ -35,7 +35,7 @@ from dtagent.config import Configuration
 from dtagent.connector import TelemetrySender
 from dtagent import config
 from dtagent.util import is_select_for_table
-from test import is_local_testing, mock_telemetry_sending
+from test._mocks.telemetry import MockTelemetryClient
 
 TEST_CONFIG_FILE_NAME = "./test/conf/config-download.json"
 
@@ -110,8 +110,6 @@ def _safe_get_unpickled_entries(pickles: dict, table_name: str, *args, **kwargs)
     Args:
         pickles (dict): Dictionary mapping table names to pickle file paths.
         table_name (str): The name of the table to retrieve unpickled entries for.
-        *args: Additional positional arguments passed to the underlying unpickling function.
-        **kwargs: Additional keyword arguments passed to the underlying unpickling function.
 
     Returns:
         Generator[Dict, None, None]: A generator yielding dictionaries representing unpickled entries for the specified table.
@@ -133,11 +131,16 @@ def _get_unpickled_entries(
 ) -> Generator[Dict, None, None]:
     import pandas as pd
 
-    pandas_df = pd.read_pickle(pickle_name)
-
-    print(f"Unpickled {pickle_name}")
-    #####
     ndjson_name = os.path.splitext(pickle_name)[0] + ".ndjson"
+    # if os.path.exists(ndjson_name):
+    #     # Read from safer NDJSON format
+    #     pandas_df = pd.read_json(ndjson_name, lines=True)
+    #     print(f"Read from NDJSON {ndjson_name}")
+    # else:
+    # Fallback to pickle and generate NDJSON
+    pandas_df = pd.read_pickle(pickle_name)
+    print(f"Unpickled {pickle_name}")
+
     collected_rows = []
 
     if limit is not None:
@@ -232,7 +235,7 @@ class LocalTelemetrySender(TelemetrySender):
 
 
 def telemetry_test_sender(
-    session: snowpark.Session, sources: str, params: dict, limit_results: int = 2, config: TestConfiguration = None
+    session: snowpark.Session, sources: str, params: dict, limit_results: int = 2, config: TestConfiguration = None, test_source: str = None
 ) -> Tuple[int, int, int, int, int]:
     """
     Invokes send_data function on a LocalTelemetrySender instance, which uses pickled data for testing purposes
@@ -240,9 +243,12 @@ def telemetry_test_sender(
         Tuple[int, int, int, int]: Count of objects, log lines, metrics, events, and bizevents sent
     """
     sender = LocalTelemetrySender(session, params, limit_results=limit_results, config=config)
-    with mock_telemetry_sending():
+
+    mock_client = MockTelemetryClient(test_source)
+    with mock_client.mock_telemetry_sending():
         results = sender.send_data(sources)
-    sender.teardown()
+        sender.teardown()
+    mock_client.store_test_results()
 
     return results
 
@@ -314,7 +320,7 @@ def read_clean_json_from_file(file_path: str) -> List[Dict]:
     Returns:
         List[Dict]: dictionary based on the content of the JSON/JSONC file
     """
-    logging.debug("Reading file: %s", file_path)
+    logging.debug("Reading clean json file: %s", file_path)
 
     with open(file_path, "r", encoding="utf-8") as file:
 
@@ -338,7 +344,7 @@ def read_clean_yml_from_file(file_path: str) -> List[Dict]:
     """
     import yaml
 
-    logging.debug("Reading file: %s", file_path)
+    logging.debug("Reading clean yml file: %s", file_path)
 
     with open(file_path, "r", encoding="utf-8") as f:
         data = yaml.safe_load(f)

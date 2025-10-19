@@ -1,0 +1,14 @@
+[
+  {
+    "eventType": "CUSTOM_INFO",
+    "title": "This is a test object 1",
+    "properties": {
+      "db.system": "snowflake",
+      "service.name": "test.dsoa2025",
+      "deployment.environment": "TEST",
+      "host.name": "test.dsoa2025.snowflakecomputing.com",
+      "telemetry.exporter.name": "dynatrace.snowagent",
+      "dsoa.run.context": "telemetry_sender"
+    }
+  }
+]

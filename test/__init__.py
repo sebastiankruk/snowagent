@@ -43,9 +43,6 @@ read_secret(
     env_name="DTAGENT_TOKEN",
 )
 
-# Global variable to store the current test source for telemetry mocking
-_current_test_source = [None]
-
 
 @functools.lru_cache(maxsize=1)
 def _get_credentials() -> Dict:
@@ -117,11 +114,14 @@ class TestDynatraceSnowAgent(DynatraceSnowAgent):
 
         OtelManager.reset_current_fail_count()
         if is_local_testing():
-            _current_test_source[0] = sources[0] if sources else None
-            with mock_telemetry_sending():
+            from test._mocks.telemetry import MockTelemetryClient
+
+            mock_client = MockTelemetryClient(sources[0] if sources else None)
+            with mock_client.mock_telemetry_sending():
                 process_results = super().process(sources, run_proc)
                 self._logs.shutdown_logger()
                 self._spans.shutdown_tracer()
+            mock_client.store_test_results()
         else:
             process_results = super().process(sources, run_proc)
 
@@ -132,169 +132,3 @@ def _overwrite_plugin_local_config_key(test_conf: TestConfiguration, plugin_name
     # added to make sure we always run tests for each mode in users plugin
     test_conf._config["plugins"][plugin_name][key_name] = new_value
     return test_conf
-
-
-@contextmanager
-def mock_telemetry_sending():
-    with (
-        patch("dtagent.otel.otel_manager.CustomLoggingSession.send") as mock_otel,
-        patch("dtagent.otel.metrics.requests.post") as mock_metrics,
-        patch("dtagent.otel.events.requests.post") as mock_events,
-        patch("dtagent.otel.bizevents.requests.post") as mock_bizevents,
-        patch("snowflake.snowpark.Session.sql") as mock_sql,
-    ):
-        # Set up HTTP mocks
-        mock_otel.side_effect = side_effect_function
-        mock_metrics.side_effect = side_effect_function
-        mock_events.side_effect = side_effect_function
-        mock_bizevents.side_effect = side_effect_function
-
-        # Set up session.sql mock to prevent actual Snowflake calls
-        current_time = datetime.datetime.now(datetime.timezone.utc)
-        one_hour_ago = current_time - datetime.timedelta(hours=1)
-        mock_sql_instance = Mock()
-        mock_row = Mock()
-        mock_row.__getitem__ = Mock(return_value=one_hour_ago)
-        mock_sql_instance.collect.return_value = [mock_row]
-        mock_sql.return_value = mock_sql_instance
-
-        yield
-
-
-def decode_object_from_protobuf(protobuf_bytes: bytes, telemetry_type: str = "logs") -> str:
-    """
-    Decode protobuf logs to extract key-value pairs from log bodies.
-
-    Args:
-        protobuf_bytes: The binary protobuf data from OpenTelemetry logs
-
-    Returns:
-        A dictionary representing the extracted key-value pairs.
-    """
-    from opentelemetry.proto.collector.logs.v1.logs_service_pb2 import ExportLogsServiceRequest
-    from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceRequest
-
-    def _extract_value(kv_pair):
-        value_field = getattr(kv_pair, "value", kv_pair)
-        if value_field.HasField("string_value"):
-            return value_field.string_value
-        elif value_field.HasField("int_value"):
-            return value_field.int_value
-        elif value_field.HasField("double_value"):
-            return value_field.double_value
-        elif value_field.HasField("bool_value"):
-            return value_field.bool_value
-        elif value_field.HasField("bytes_value"):
-            return value_field.bytes_value.hex()  # Convert bytes to hex string
-        elif value_field.HasField("array_value"):
-            return [_extract_value(v) for v in value_field.array_value.values]
-        elif value_field.HasField("kvlist_value"):
-            return {kv.key: _extract_value(kv) for kv in value_field.kvlist_value.values}
-        else:
-            return str(value_field)
-
-    request = ExportLogsServiceRequest() if telemetry_type == "logs" else ExportTraceServiceRequest()
-    request.ParseFromString(protobuf_bytes)
-
-    kv_data = {}
-
-    for resource in getattr(request, f"resource_{telemetry_type}"):
-        for scope in getattr(resource, f"scope_{telemetry_type}"):
-            for record in scope.log_records if telemetry_type == "logs" else scope.spans:
-                kv_pairs = None
-                if telemetry_type == "logs":
-                    if record.body.HasField("kvlist_value"):
-                        kv_pairs = record.body.kvlist_value.values
-                elif telemetry_type == "spans":
-                    kv_pairs = record.attributes
-
-                    for event in record.events:
-                        event_name = event.name
-                        kv_data[f"event_{event_name}_name"] = event_name
-                        for kv_pair in event.attributes:
-                            key = f"event_{event_name}_{kv_pair.key}"
-                            value = _extract_value(kv_pair)
-                            kv_data[key] = value
-                if kv_pairs:
-                    for kv_pair in kv_pairs:
-                        key = kv_pair.key
-                        value = _extract_value(kv_pair)
-                        kv_data[key] = value
-
-    return kv_data
-
-
-def side_effect_function(*args, **kwargs):
-    import inspect
-    from unittest.mock import MagicMock
-    from dtagent.otel.bizevents import BizEvents
-    from dtagent.otel.events import Events
-    from dtagent.otel.logs import Logs
-    from dtagent.otel.metrics import Metrics
-    from dtagent.otel.spans import Spans
-
-    # Use the global test source instead of inspecting the stack
-    source_context = _current_test_source[0]
-
-    # Handle both requests.post mocks (args[0] is url) and CustomLoggingSession.send mocks (args[0] is request)
-    if hasattr(args[0], "url"):
-        # CustomLoggingSession.send: args[0] is request object
-        url = args[0].url
-        data = args[0].body
-    else:
-        # requests.post: args[0] is url string
-        url = args[0]
-        data = kwargs.get("data")
-
-    # Determine telemetry_type based on url and set up mock response
-    mock_response = MagicMock()
-    telemetry_type = None
-
-    if url.endswith(BizEvents.ENDPOINT_PATH):
-        telemetry_type = "biz_events"
-        mock_response.status_code = 202
-        # we skip self-monitoring entries saving
-        if (isinstance(data, list) and any(item.get("data", {}).get("dsoa.run.context") == "self-monitoring" for item in data)) or (
-            isinstance(data, str) and ' "dsoa.run.context": "self-monitoring"' in data
-        ):
-            data = None
-    elif url.endswith(Events.ENDPOINT_PATH):
-        telemetry_type = "events"
-        mock_response.status_code = 201
-    elif url.endswith(Logs.ENDPOINT_PATH):
-        telemetry_type = "logs"
-        mock_response.status_code = 200
-    elif url.endswith(Spans.ENDPOINT_PATH):
-        telemetry_type = "spans"
-        mock_response.status_code = 200
-    elif url.endswith(Metrics.ENDPOINT_PATH):
-        telemetry_type = "metrics"
-        mock_response.status_code = 202
-
-    if data and telemetry_type and source_context:
-        ext = "txt" if telemetry_type == "metrics" else "json"
-        filepath = f"test/test_results/{source_context}/{telemetry_type}.{ext}"
-        content = None
-
-        if not os.path.exists(filepath):
-            os.makedirs(os.path.dirname(filepath), exist_ok=True)
-
-            if isinstance(data, (dict, str)):
-                content = data
-            elif isinstance(data, bytes):
-                if telemetry_type in ("logs", "spans"):
-                    content = decode_object_from_protobuf(data, telemetry_type=telemetry_type)
-                else:
-                    content = data.hex()
-
-            with open(filepath, "w", encoding="utf-8") as f:
-                if ext == "json":
-                    try:
-                        json_data = json.loads(content) if isinstance(content, str) else content
-                        json.dump(json_data, f, indent=2)
-                    except (json.JSONDecodeError, TypeError):
-                        f.write(content)
-                else:
-                    f.write(content)
-
-    return mock_response
