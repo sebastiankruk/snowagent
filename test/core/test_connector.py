@@ -87,7 +87,7 @@ class TestTelemetrySender:
             {"auto_mode": False, "logs": False, "events": False, "bizevents": True},
             limit_results=rows_cnt,
             config=_utils.get_config(),
-            test_source="test_large_view_bizevents",
+            test_source=None,  # we don to record tests with variable data size
         )
 
         LOG.debug("We have sent %d rows as BizEvents", results[-1])

@@ -17,8 +17,7 @@
       "host.name": "test.dsoa2025.snowflakecomputing.com",
       "telemetry.exporter.name": "dynatrace.snowagent",
       "dsoa.run.context": "data_schemas"
-    },
-    "startTime": 1760893537576
+    }
   },
   {
     "eventType": "CUSTOM_INFO",
@@ -39,7 +38,6 @@
       "host.name": "test.dsoa2025.snowflakecomputing.com",
       "telemetry.exporter.name": "dynatrace.snowagent",
       "dsoa.run.context": "data_schemas"
-    },
-    "startTime": 1760893537631
+    }
   }
 ]

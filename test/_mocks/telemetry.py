@@ -319,8 +319,8 @@ class MockTelemetryClient:
                     "end_time",
                     "start_time",
                     "time",
-                    "startTime",
-                    "endTime",
+                    "starttime",
+                    "endtime",
                     "event.start",
                     "event.end",
                     # from event tests
