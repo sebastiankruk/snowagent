@@ -196,7 +196,7 @@ class MockTelemetryClient:
                 else:
                     f.write("\n".join(content))
 
-    def _decode_object_from_protobuf(self, protobuf_bytes: bytes, telemetry_type: str = "logs") -> str:
+    def _decode_object_from_protobuf(self, protobuf_bytes: bytes, telemetry_type: str = "logs") -> List[Dict[str, Any]]:
         """
         Decode protobuf logs to extract key-value pairs from log bodies.
 
@@ -205,7 +205,7 @@ class MockTelemetryClient:
             telemetry_type: The type of telemetry data ("logs" or "spans").
 
         Returns:
-            A dictionary representing the extracted key-value pairs.
+            A list of dictionaries representing the extracted key-value pairs.
         """
         from opentelemetry.proto.collector.logs.v1.logs_service_pb2 import ExportLogsServiceRequest
         from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceRequest
@@ -243,11 +243,11 @@ class MockTelemetryClient:
         request = ExportLogsServiceRequest() if telemetry_type == "logs" else ExportTraceServiceRequest()
         request.ParseFromString(protobuf_bytes)
 
-        kv_data = {}
-
+        kv_data = []
         for resource in getattr(request, f"resource_{telemetry_type}"):
             for scope in getattr(resource, f"scope_{telemetry_type}"):
                 for record in scope.log_records if telemetry_type == "logs" else scope.spans:
+                    kv_datum = {}
                     kv_pairs = None
                     if telemetry_type == "logs":
                         if record.body.HasField("kvlist_value"):
@@ -257,16 +257,19 @@ class MockTelemetryClient:
 
                         for event in record.events:
                             event_name = event.name
-                            kv_data[f"event_{event_name}_name"] = event_name
+                            kv_datum[f"event_{event_name}_name"] = event_name
                             for kv_pair in event.attributes:
                                 key = f"event_{event_name}_{kv_pair.key}"
                                 value = __extract_value(kv_pair)
-                                kv_data[key] = value
+                                kv_datum[key] = value
                     if kv_pairs:
                         for kv_pair in kv_pairs:
                             key = kv_pair.key
                             value = __extract_value(kv_pair)
-                            kv_data[key] = value
+                            kv_datum[key] = value
+
+                    if kv_datum:
+                        kv_data.append(kv_datum)
 
         return kv_data
 

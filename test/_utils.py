@@ -249,7 +249,7 @@ def telemetry_test_sender(
         results = sender.send_data(sources)
         sender._logs.flush_logs()
         sender._spans.flush_traces()
-    mock_client.store_or_test_results(delay=5)  # wait for OTEL SDK to flush all data
+    mock_client.store_or_test_results()
 
     return results
 

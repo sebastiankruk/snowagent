@@ -54,7 +54,9 @@ class TestUsers:
         class TestUsersPlugin(UsersPlugin):
 
             def _get_table_rows(self, t_data: str) -> Generator[Dict, None, None]:
-                return utils._safe_get_unpickled_entries(TestUsers.PICKLES, t_data, limit=2)
+                for r in utils._safe_get_unpickled_entries(TestUsers.PICKLES, t_data, limit=2):
+                    print(f"USER DATA at {t_data}: {r}")
+                    yield r
 
         def __local_get_plugin_class(source: str):
             return TestUsersPlugin
