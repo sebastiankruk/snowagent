@@ -94,6 +94,7 @@ class TestDynatraceSnowAgent(DynatraceSnowAgent):
     def __init__(self, session: snowpark.Session, config: Configuration) -> None:
         self._local_configuration = config
         self._local_configuration._config["otel"]["spans"]["max_export_batch_size"] = 1
+        self._local_configuration._config["otel"]["logs"]["max_export_batch_size"] = 1
         super().__init__(session)
 
     def _get_config(self, session: snowpark.Session) -> Configuration:

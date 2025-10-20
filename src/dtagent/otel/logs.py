@@ -73,7 +73,9 @@ class Logs:
                     endpoint=f'{self._configuration.get("logs.http")}',
                     headers={"Authorization": f'Api-Token {self._configuration.get("dt.token")}'},
                     session=CustomLoggingSession(),
-                )
+                ),
+                export_timeout_millis=self._configuration.get(otel_module="logs", key="export_timeout_millis", default_value=10000),
+                max_export_batch_size=self._configuration.get(otel_module="logs", key="max_export_batch_size", default_value=100),
             )
         )
         handler = LoggingHandler(level=logging.NOTSET, logger_provider=self._otel_logger_provider)

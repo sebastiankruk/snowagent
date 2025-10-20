@@ -49,6 +49,20 @@ class MockTelemetryClient:
         """
         Store the collected test results into files for future reference.
         """
+        # Remove duplicates while preserving order
+        dedup_results = {}
+        for telemetry_type, content in self.test_results.items():
+            seen = set()
+            dedup_results[telemetry_type] = []
+            for item in content:
+                # Convert dicts to a hashable type for deduplication
+                key = json.dumps(item, sort_keys=True) if isinstance(item, dict) else str(item)
+                if key not in seen:
+                    seen.add(key)
+                    dedup_results[telemetry_type].append(item)
+        self.test_results = dedup_results
+
+        # store or test results
         if self.is_test_results_missing:
             for telemetry_type, content in self.test_results.items():
                 self._save_telemetry_test_data(telemetry_type, content)

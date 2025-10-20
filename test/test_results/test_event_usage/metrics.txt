@@ -3,6 +3,4 @@ snowflake.credits.used,db.system="snowflake",service.name="test.dsoa2025",deploy
 snowflake.data.ingested,db.system="snowflake",service.name="test.dsoa2025",deployment.environment="TEST",host.name="test.dsoa2025.snowflakecomputing.com" 736
 #snowflake.data.ingested gauge dt.meta.displayName="Bytes Ingested for Event Table",dt.meta.unit="bytes"
 snowflake.credits.used,db.system="snowflake",service.name="test.dsoa2025",deployment.environment="TEST",host.name="test.dsoa2025.snowflakecomputing.com" 0.000215595
-#snowflake.credits.used gauge dt.meta.displayName="Credits Used for Event Table",dt.meta.unit="credits"
 snowflake.data.ingested,db.system="snowflake",service.name="test.dsoa2025",deployment.environment="TEST",host.name="test.dsoa2025.snowflakecomputing.com" 0
-#snowflake.data.ingested gauge dt.meta.displayName="Bytes Ingested for Event Table",dt.meta.unit="bytes"
