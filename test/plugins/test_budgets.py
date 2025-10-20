@@ -22,11 +22,14 @@
 #
 #
 class TestBudgets:
+    import pytest
+
     PICKLES = {
         "APP.V_BUDGET_DETAILS": "test/test_data/budgets.pkl",
         "APP.V_BUDGET_SPENDINGS": "test/test_data/budget_spendings.pkl",
     }
 
+    @pytest.mark.xdist_group(name="test_telemetry")
     def test_budgets(self):
         from unittest.mock import patch
         from typing import Dict, Generator

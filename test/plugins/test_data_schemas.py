@@ -22,8 +22,11 @@
 #
 #
 class TestDataSchemas:
+    import pytest
+
     PICKLES = {"APP.V_DATA_SCHEMAS": "test/test_data/data_schemas.pkl"}
 
+    @pytest.mark.xdist_group(name="test_telemetry")
     def test_data_schemas(self):
         from typing import Dict, Generator
         from dtagent.plugins.data_schemas import DataSchemasPlugin

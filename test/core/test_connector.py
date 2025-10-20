@@ -54,6 +54,9 @@ class TestTelemetrySender:
     * sending all data from a given (custom structure) view as logs, events, and bizevents
     """
 
+    import pytest
+
+    @pytest.mark.xdist_group(name="test_telemetry")
     def test_viewsend(self):  # ):
         import random
 
@@ -73,6 +76,7 @@ class TestTelemetrySender:
         assert results[-2] == rows_cnt  # events
         assert results[-1] == rows_cnt  # bizevents
 
+    @pytest.mark.xdist_group(name="test_telemetry")
     def test_large_view_send_as_be(self):
         import random
 
@@ -97,6 +101,7 @@ class TestTelemetrySender:
         assert results[-2] == 0  # events
         assert results[-1] == rows_cnt  # bizevents
 
+    @pytest.mark.xdist_group(name="test_telemetry")
     def test_coonector_bizevents(self):
         session = _get_session()
 
@@ -116,11 +121,13 @@ class TestTelemetrySender:
         mock_client = MockTelemetryClient("test_coonector_bizevents")
         with mock_client.mock_telemetry_sending():
             results = sender.send_data(data)
-            sender.teardown()
+            sender._logs.flush_logs()
+            sender._spans.flush_traces()
         mock_client.store_or_test_results()
 
         assert results[-1] == 1
 
+    @pytest.mark.xdist_group(name="test_telemetry")
     def test_automode(self):
         session = _get_session()
 

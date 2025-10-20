@@ -22,10 +22,13 @@
 #
 #
 class TestResMon:
+    import pytest
+
     T_DATA_RESMON = "APP.V_RESOURCE_MONITORS"
     T_DATA_WHS = "APP.V_WAREHOUSES"
     PICKLES = {T_DATA_RESMON: "test/test_data/resource_monitors.pkl", T_DATA_WHS: "test/test_data/warehouses.pkl"}
 
+    @pytest.mark.xdist_group(name="test_telemetry")
     def test_res_mon(self):
         import logging
         from unittest.mock import patch

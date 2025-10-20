@@ -45,7 +45,7 @@ class MockTelemetryClient:
         self.is_test_results_missing = not self.expected_results
         self.test_results: Dict[str, List[Any]] = {}
 
-    def store_or_test_results(self):
+    def store_or_test_results(self, delay: float = None):
         """
         Store the collected test results into files for future reference.
         """
@@ -54,6 +54,11 @@ class MockTelemetryClient:
                 self._save_telemetry_test_data(telemetry_type, content)
         else:
             # otherwise we will test if save_test_results would match expected results
+            if delay:
+                import time
+
+                time.sleep(delay)
+
             for telemetry_type, expected_content in self.expected_results.items():
                 actual_content = self.test_results.get(telemetry_type, [])
 
@@ -63,7 +68,7 @@ class MockTelemetryClient:
                         return json.dumps(item, sort_keys=True)
                     return str(item)
 
-                sorted_actual = sorted("\n".join(actual_content) if telemetry_type == "metrics" else actual_content, key=sort_key)
+                sorted_actual = sorted(actual_content, key=sort_key)
                 sorted_expected = sorted(expected_content, key=sort_key)
                 if (
                     self.test_source == "test_shares" or telemetry_type == "spans"
@@ -72,9 +77,27 @@ class MockTelemetryClient:
                         item in sorted_expected for item in sorted_actual
                     ), f"Telemetry type {telemetry_type} does not match expected results (actual must be subset of expected):\n\n{expected_content}\n\nvs\n\n{actual_content}"
                 else:
+                    import difflib
+
+                    diff = ""
+                    if sorted_actual != sorted_expected:
+                        if telemetry_type == "metrics":
+                            diff = "\n".join(
+                                difflib.unified_diff(
+                                    "\n".join(sorted_expected), "\n".join(sorted_actual), fromfile="expected", tofile="actual", lineterm=""
+                                )
+                            )
+                        else:
+                            expected_str = json.dumps(sorted_expected, indent=2, sort_keys=True)
+                            actual_str = json.dumps(sorted_actual, indent=2, sort_keys=True)
+                            diff = "\n".join(
+                                difflib.unified_diff(
+                                    expected_str.splitlines(), actual_str.splitlines(), fromfile="expected", tofile="actual", lineterm=""
+                                )
+                            )
                     assert (
                         sorted_actual == sorted_expected
-                    ), f"Telemetry type {telemetry_type} does not match expected results:\n\n{expected_content}\n\nvs\n\n{actual_content}"
+                    ), f"Telemetry type {telemetry_type} does not match expected results:\n\nDiff:\n{diff}"
 
     @contextmanager
     def mock_telemetry_sending(self):
@@ -111,7 +134,7 @@ class MockTelemetryClient:
         for telemetry_type in telemetry_types:
             data = self._load_telemetry_test_data(telemetry_type)
             if data is not None:
-                expected_results[telemetry_type] = data
+                expected_results[telemetry_type] = data if telemetry_type != "metrics" else data.split("\n")
         return expected_results
 
     def _determine_file_name(self, telemetry_type: str) -> tuple[str, str]:
@@ -360,6 +383,20 @@ class MockTelemetryClient:
             }
             return cleaned_dict
 
+        def __cleanup_metric_lines(lines: str) -> List[str]:
+            """
+            Remove dynamic fields from metric lines for comparison and turns a multiline string into a list of lines.
+
+            Args:
+                lines (List[str]): The list of metric lines.
+            """
+            processed_lines = []
+            for line in lines.split("\n"):
+                if not line.strip().startswith("#"):
+                    line = re.sub(r"(\s\d{13})\s*$", " 0", line)
+                processed_lines.append(line)
+            return processed_lines
+
         # Use the global test source instead of inspecting the stack
         source_context = self.test_source
 
@@ -389,17 +426,14 @@ class MockTelemetryClient:
 
                 for item in content if isinstance(content, list) else [content]:
                     if telemetry_type == "metrics" and isinstance(item, str):
-                        lines = item.split("\n")
-                        processed_lines = []
-                        for line in lines:
-                            if not line.strip().startswith("#"):
-                                line = re.sub(r"(\s\d{13})\s*$", " 0", line)
-                            processed_lines.append(line)
-                        item = "\n".join(processed_lines)
+                        item = __cleanup_metric_lines(item)
                     elif isinstance(item, dict):
                         item = __cleanup_telemetry_dict(item)
 
-                    self.test_results[telemetry_type].append(item)
+                    if isinstance(item, list):
+                        self.test_results[telemetry_type].extend(item)
+                    else:
+                        self.test_results[telemetry_type].append(item)
 
                     if item not in self.expected_results.get(telemetry_type, []):
                         mock_response.status_code = 500

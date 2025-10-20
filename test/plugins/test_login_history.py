@@ -22,8 +22,11 @@
 #
 #
 class TestLoginHist:
+    import pytest
+
     PICKLES = {"APP.V_LOGIN_HISTORY": "test/test_data/login_history.pkl", "APP.V_SESSIONS": "test/test_data/sessions.pkl"}
 
+    @pytest.mark.xdist_group(name="test_telemetry")
     def test_login_hist(self):
         import logging
         from unittest.mock import patch

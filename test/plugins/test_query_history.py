@@ -22,8 +22,11 @@
 #
 #
 class TestQueryHist:
+    import pytest
+
     PICKLES = {"APP.V_RECENT_QUERIES": "test/test_data/recent_queries2.pkl"}
 
+    @pytest.mark.xdist_group(name="test_telemetry")
     def test_query_hist(self):
         import logging
         from unittest.mock import patch

@@ -145,6 +145,12 @@ class Logs:
 
         OtelManager.verify_communication()
 
+    def flush_logs(self) -> None:
+        """flushes remaining logs."""
+
+        if self._otel_logger_provider:
+            self._otel_logger_provider.force_flush()
+
     def shutdown_logger(self) -> None:
         """flushes remaining logs and shuts down the logger."""
 

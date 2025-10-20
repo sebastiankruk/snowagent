@@ -22,8 +22,11 @@
 #
 #
 class TestEventUsage:
+    import pytest
+
     PICKLES = {"APP.V_EVENT_USAGE_HISTORY": "test/test_data/event_usage.pkl"}
 
+    @pytest.mark.xdist_group(name="test_telemetry")
     def test_event_usage(self):
         import logging
         from unittest.mock import patch

@@ -22,8 +22,11 @@
 #
 #
 class TestActiveQueries:
+    import pytest
+
     PICKLES = {"SELECT * FROM TABLE(DTAGENT_DB.APP.F_ACTIVE_QUERIES_INSTRUMENTED())": "test/test_data/active_queries.pkl"}
 
+    @pytest.mark.xdist_group(name="test_telemetry")
     def test_active_queries(self):
         import logging
         from unittest.mock import patch

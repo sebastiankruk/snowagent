@@ -22,12 +22,15 @@
 #
 #
 class TestTasks:
+    import pytest
+
     PICKLES = {
         "APP.V_SERVERLESS_TASKS": "test/test_data/tasks_serverless.pkl",
         "APP.V_TASK_HISTORY": "test/test_data/tasks_history.pkl",
         "APP.V_TASK_VERSIONS": "test/test_data/tasks_versions.pkl",
     }
 
+    @pytest.mark.xdist_group(name="test_telemetry")
     def test_tasks(self):
         from typing import Generator, Dict
 

@@ -22,12 +22,15 @@
 #
 #
 class TestDynamicTables:
+    import pytest
+
     PICKLES = {
         "APP.V_DYNAMIC_TABLES_INSTRUMENTED": "test/test_data/dynamic_tables.pkl",
         "APP.V_DYNAMIC_TABLE_REFRESH_HISTORY_INSTRUMENTED": "test/test_data/dynamic_table_refresh_history.pkl",
         "APP.V_DYNAMIC_TABLE_GRAPH_HISTORY_INSTRUMENTED": "test/test_data/dynamic_table_graph_history.pkl",
     }
 
+    @pytest.mark.xdist_group(name="test_telemetry")
     def test_dynamic_tables(self):
         import logging
         from unittest.mock import patch

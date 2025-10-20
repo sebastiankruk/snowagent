@@ -22,11 +22,14 @@
 #
 #
 class TestTrustCenter:
+    import pytest
+
     PICKLES = {
         "APP.V_TRUST_CENTER_METRICS": "test/test_data/trust_center_metrics.pkl",
         "APP.V_TRUST_CENTER_INSTRUMENTED": "test/test_data/trust_center_instr.pkl",
     }
 
+    @pytest.mark.xdist_group(name="test_telemetry")
     def test_trust_center(self):
 
         from typing import Generator, Dict

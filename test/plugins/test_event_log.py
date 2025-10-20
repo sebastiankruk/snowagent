@@ -22,12 +22,15 @@
 #
 #
 class TestEventLog:
+    import pytest
+
     PICKLES = {
         "APP.V_EVENT_LOG": "test/test_data/event_log.pkl",
         "APP.V_EVENT_LOG_METRICS_INSTRUMENTED": "test/test_data/event_log_metrics.pkl",
         "APP.V_EVENT_LOG_SPANS_INSTRUMENTED": "test/test_data/event_log_spans.pkl",
     }
 
+    @pytest.mark.xdist_group(name="test_telemetry")
     def test_event_log(self):
         import logging
         from unittest.mock import patch

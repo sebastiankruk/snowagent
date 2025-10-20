@@ -22,6 +22,8 @@
 #
 #
 class TestUsers:
+    import pytest
+
     PICKLES = {
         "APP.V_USERS_INSTRUMENTED": "test/test_data/users_hist.pkl",
         "APP.V_USERS_ALL_PRIVILEGES_INSTRUMENTED": "test/test_data/users_all_privileges.pkl",
@@ -30,6 +32,7 @@ class TestUsers:
         "APP.V_USERS_REMOVED_DIRECT_ROLES_INSTRUMENTED": "test/test_data/users_roles_direct_removed.pkl",
     }
 
+    @pytest.mark.xdist_group(name="test_telemetry")
     def test_users(self):
 
         import logging

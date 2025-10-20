@@ -22,8 +22,11 @@
 #
 #
 class TestDataVol:
+    import pytest
+
     PICKLES = {"APP.V_DATA_VOLUME": "test/test_data/data_volume.pkl"}
 
+    @pytest.mark.xdist_group(name="test_telemetry")
     def test_data_vol(self):
         from typing import Dict, Generator
         from dtagent.plugins.data_volume import DataVolumePlugin

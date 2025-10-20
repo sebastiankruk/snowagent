@@ -247,8 +247,9 @@ def telemetry_test_sender(
     mock_client = MockTelemetryClient(test_source)
     with mock_client.mock_telemetry_sending():
         results = sender.send_data(sources)
-        sender.teardown()
-    mock_client.store_or_test_results()
+        sender._logs.flush_logs()
+        sender._spans.flush_traces()
+    mock_client.store_or_test_results(delay=5)  # wait for OTEL SDK to flush all data
 
     return results
 
