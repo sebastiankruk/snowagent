@@ -120,9 +120,12 @@ class TestDynatraceSnowAgent(DynatraceSnowAgent):
         if is_local_testing():
             mock_client = MockTelemetryClient(sources[0] if sources else None)
             with mock_client.mock_telemetry_sending():
+                import time
+
                 process_results = super().process(sources, run_proc)
                 self._logs.flush_logs()
                 self._spans.flush_traces()
+                time.sleep(5)
             mock_client.store_or_test_results()
         else:
             process_results = super().process(sources, run_proc)
