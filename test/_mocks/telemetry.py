@@ -71,9 +71,7 @@ class MockTelemetryClient:
                 if sorted_actual != sorted_expected:
                     if telemetry_type == "metrics":
                         diff = "\n".join(
-                            difflib.unified_diff(
-                                "\n".join(sorted_expected), "\n".join(sorted_actual), fromfile="expected", tofile="actual", lineterm=""
-                            )
+                            difflib.unified_diff(sorted_expected, sorted_actual, fromfile="expected", tofile="actual", lineterm="")
                         )
                     else:
                         expected_str = json.dumps(sorted_expected, indent=2, sort_keys=True)
@@ -91,7 +89,6 @@ class MockTelemetryClient:
     def mock_telemetry_sending(self):
         with (
             patch("requests.sessions.Session.post") as mock_session_post,
-            patch("dtagent.otel.otel_manager.CustomLoggingSession.send") as mock_otel,
             patch("dtagent.otel.metrics.requests.post") as mock_metrics,
             patch("dtagent.otel.events.requests.post") as mock_events,
             patch("dtagent.otel.bizevents.requests.post") as mock_bizevents,
@@ -99,7 +96,6 @@ class MockTelemetryClient:
         ):
             # Set up HTTP mocks
             mock_session_post.side_effect = self._side_effect_function
-            mock_otel.side_effect = self._side_effect_function
             mock_metrics.side_effect = self._side_effect_function
             mock_events.side_effect = self._side_effect_function
             mock_bizevents.side_effect = self._side_effect_function

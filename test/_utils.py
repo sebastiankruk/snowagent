@@ -96,19 +96,9 @@ def _logging_findings(
 
         print(LOG.getEffectiveLevel())
 
-    if is_local_testing():
-        mock_client = MockTelemetryClient(log_tag)
-        with mock_client.mock_telemetry_sending():
-            results = dtagent.process([str(log_tag)], False)
-            dtagent._logs.flush_logs()
-            dtagent._spans.flush_traces()
-            dtagent.teardown()
-            session.close()
-        mock_client.store_or_test_results()
-    else:
-        results = dtagent.process([str(log_tag)], False)
-        dtagent.teardown()
-        session.close()
+    results = dtagent.process([str(log_tag)], False)
+    dtagent.teardown()
+    session.close()
 
     print(f"!!!! RESULTS = {results}")
 

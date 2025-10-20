@@ -110,11 +110,21 @@ class TestDynatraceSnowAgent(DynatraceSnowAgent):
         run_proc: bool = True,
     ) -> Dict:
         from dtagent.otel.otel_manager import OtelManager
+        from test._mocks.telemetry import MockTelemetryClient
 
         process_results = {}
 
         OtelManager.reset_current_fail_count()
-        process_results = super().process(sources, run_proc)
+
+        if is_local_testing():
+            mock_client = MockTelemetryClient(sources[0] if sources else None)
+            with mock_client.mock_telemetry_sending():
+                process_results = super().process(sources, run_proc)
+                self._logs.flush_logs()
+                self._spans.flush_traces()
+            mock_client.store_or_test_results()
+        else:
+            process_results = super().process(sources, run_proc)
 
         return process_results
 
