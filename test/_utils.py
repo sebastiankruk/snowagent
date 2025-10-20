@@ -242,6 +242,9 @@ def telemetry_test_sender(
     Returns:
         Tuple[int, int, int, int]: Count of objects, log lines, metrics, events, and bizevents sent
     """
+    config._config["otel"]["spans"]["max_export_batch_size"] = 1
+    config._config["otel"]["logs"]["max_export_batch_size"] = 1
+
     sender = LocalTelemetrySender(session, params, limit_results=limit_results, config=config)
 
     mock_client = MockTelemetryClient(test_source)
