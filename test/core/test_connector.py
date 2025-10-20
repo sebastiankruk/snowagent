@@ -121,8 +121,8 @@ class TestTelemetrySender:
         mock_client = MockTelemetryClient("test_coonector_bizevents")
         with mock_client.mock_telemetry_sending():
             results = sender.send_data(data)
-            sender._logs.flush_logs()
-            sender._spans.flush_traces()
+            sender._logs.shutdown_logger()
+            sender._spans.shutdown_tracer()
         mock_client.store_or_test_results()
 
         assert results[-1] == 1
