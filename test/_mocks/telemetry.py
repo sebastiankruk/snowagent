@@ -45,7 +45,7 @@ class MockTelemetryClient:
         self.is_test_results_missing = not self.expected_results
         self.test_results: Dict[str, List[Any]] = {}
 
-    def store_or_test_results(self, delay: float = None):
+    def store_or_test_results(self):
         """
         Store the collected test results into files for future reference.
         """
@@ -54,11 +54,6 @@ class MockTelemetryClient:
                 self._save_telemetry_test_data(telemetry_type, content)
         else:
             # otherwise we will test if save_test_results would match expected results
-            if delay:
-                import time
-
-                time.sleep(delay)
-
             for telemetry_type, expected_content in self.expected_results.items():
                 actual_content = self.test_results.get(telemetry_type, [])
 
@@ -70,31 +65,24 @@ class MockTelemetryClient:
 
                 sorted_actual = sorted(actual_content, key=sort_key)
                 sorted_expected = sorted(expected_content, key=sort_key)
-                if (
-                    self.test_source == "test_shares" or telemetry_type == "spans"
-                ):  # TODO we need to improve tests when these races happen in parallel executions
-                    assert all(
-                        item in sorted_expected for item in sorted_actual
-                    ), f"Telemetry type {telemetry_type} does not match expected results (actual must be subset of expected):\n\n{expected_content}\n\nvs\n\n{actual_content}"
-                else:
-                    import difflib
+                import difflib
 
-                    diff = ""
-                    if sorted_actual != sorted_expected:
-                        if telemetry_type == "metrics":
-                            diff = "\n".join(
-                                difflib.unified_diff(
-                                    "\n".join(sorted_expected), "\n".join(sorted_actual), fromfile="expected", tofile="actual", lineterm=""
-                                )
+                diff = ""
+                if sorted_actual != sorted_expected:
+                    if telemetry_type == "metrics":
+                        diff = "\n".join(
+                            difflib.unified_diff(
+                                "\n".join(sorted_expected), "\n".join(sorted_actual), fromfile="expected", tofile="actual", lineterm=""
                             )
-                        else:
-                            expected_str = json.dumps(sorted_expected, indent=2, sort_keys=True)
-                            actual_str = json.dumps(sorted_actual, indent=2, sort_keys=True)
-                            diff = "\n".join(
-                                difflib.unified_diff(
-                                    expected_str.splitlines(), actual_str.splitlines(), fromfile="expected", tofile="actual", lineterm=""
-                                )
+                        )
+                    else:
+                        expected_str = json.dumps(sorted_expected, indent=2, sort_keys=True)
+                        actual_str = json.dumps(sorted_actual, indent=2, sort_keys=True)
+                        diff = "\n".join(
+                            difflib.unified_diff(
+                                expected_str.splitlines(), actual_str.splitlines(), fromfile="expected", tofile="actual", lineterm=""
                             )
+                        )
                     assert (
                         sorted_actual == sorted_expected
                     ), f"Telemetry type {telemetry_type} does not match expected results:\n\nDiff:\n{diff}"
@@ -102,6 +90,7 @@ class MockTelemetryClient:
     @contextmanager
     def mock_telemetry_sending(self):
         with (
+            patch("requests.sessions.Session.post") as mock_session_post,
             patch("dtagent.otel.otel_manager.CustomLoggingSession.send") as mock_otel,
             patch("dtagent.otel.metrics.requests.post") as mock_metrics,
             patch("dtagent.otel.events.requests.post") as mock_events,
@@ -109,6 +98,7 @@ class MockTelemetryClient:
             patch("snowflake.snowpark.Session.sql") as mock_sql,
         ):
             # Set up HTTP mocks
+            mock_session_post.side_effect = self._side_effect_function
             mock_otel.side_effect = self._side_effect_function
             mock_metrics.side_effect = self._side_effect_function
             mock_events.side_effect = self._side_effect_function
@@ -169,7 +159,7 @@ class MockTelemetryClient:
                     try:
                         return json.load(f)
                     except json.JSONDecodeError as e:
-                        print(f"Error decoding JSON from {filepath}: {e}")
+                        print(f"Error decoding JSON from file {filepath}: {e}")
 
                 return f.read()
         return None
@@ -330,14 +320,17 @@ class MockTelemetryClient:
             Returns:
                 tuple[str, Any]: A tuple containing the URL and data for the request.
             """
-            if hasattr(args[0], "url"):
-                # CustomLoggingSession.send: args[0] is request object
+            if args and hasattr(args[0], "url"):
                 url = args[0].url
+            elif "url" in kwargs:
+                url = kwargs["url"]
+            else:
+                url = args[0]
+
+            if args and hasattr(args[0], "body"):
                 data = args[0].body
             else:
-                # requests.post: args[0] is url string
-                url = args[0]
-                data = kwargs.get("data")
+                data = kwargs.get("data", "")
 
             return url, data
 
@@ -419,26 +412,24 @@ class MockTelemetryClient:
                 else:
                     content = data.hex()
             if content:
-                if isinstance(content, (str, bytes)):
+                if telemetry_type != "metrics" and isinstance(content, (str, bytes)):
                     try:
                         content = json.loads(content)
                     except (json.JSONDecodeError, TypeError) as e:
-                        print(f"Error decoding JSON from {content}: {e}")
+                        print(f"Error decoding JSON from API call payload {content}: {e}")
                 if telemetry_type not in self.test_results:
                     self.test_results[telemetry_type] = []
 
+                if telemetry_type == "metrics" and isinstance(content, str):
+                    content = __cleanup_metric_lines(content)
+
                 for item in content if isinstance(content, list) else [content]:
-                    if telemetry_type == "metrics" and isinstance(item, str):
-                        item = __cleanup_metric_lines(item)
-                    elif isinstance(item, dict):
+                    if isinstance(item, dict):
                         item = __cleanup_telemetry_dict(item)
 
-                    if isinstance(item, list):
-                        self.test_results[telemetry_type].extend(item)
-                    else:
-                        self.test_results[telemetry_type].append(item)
+                    self.test_results[telemetry_type].append(item)
 
-                    if item not in self.expected_results.get(telemetry_type, []):
-                        mock_response.status_code = 500
+        if mock_response.status_code >= 300:
+            print(f"###### PROBLEM SENDING {telemetry_type} TELEMETRY TO {url}; ERROR CODE: {mock_response.status_code} ######")
 
         return mock_response

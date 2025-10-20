@@ -82,6 +82,7 @@ def _logging_findings(
     log_level: logging,
     show_detailed_logs: bool,
 ):
+    from test import is_local_testing
 
     if log_level != "":
         logging.basicConfig(level=log_level)
@@ -95,12 +96,21 @@ def _logging_findings(
 
         print(LOG.getEffectiveLevel())
 
-    results = dtagent.process([str(log_tag)], False)
+    if is_local_testing():
+        mock_client = MockTelemetryClient(log_tag)
+        with mock_client.mock_telemetry_sending():
+            results = dtagent.process([str(log_tag)], False)
+            dtagent._logs.flush_logs()
+            dtagent._spans.flush_traces()
+            dtagent.teardown()
+            session.close()
+        mock_client.store_or_test_results()
+    else:
+        results = dtagent.process([str(log_tag)], False)
+        dtagent.teardown()
+        session.close()
 
     print(f"!!!! RESULTS = {results}")
-
-    dtagent.teardown()
-    session.close()
 
 
 def _safe_get_unpickled_entries(pickles: dict, table_name: str, *args, **kwargs) -> Generator[Dict, None, None]:

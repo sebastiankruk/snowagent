@@ -93,6 +93,7 @@ class TestDynatraceSnowAgent(DynatraceSnowAgent):
 
     def __init__(self, session: snowpark.Session, config: Configuration) -> None:
         self._local_configuration = config
+        self._local_configuration._config["otel"]["spans"]["max_export_batch_size"] = 1
         super().__init__(session)
 
     def _get_config(self, session: snowpark.Session) -> Configuration:
@@ -113,19 +114,13 @@ class TestDynatraceSnowAgent(DynatraceSnowAgent):
         process_results = {}
 
         OtelManager.reset_current_fail_count()
-        if is_local_testing():
-            from test._mocks.telemetry import MockTelemetryClient
-
-            mock_client = MockTelemetryClient(sources[0] if sources else None)
-            with mock_client.mock_telemetry_sending():
-                process_results = super().process(sources, run_proc)
-                self._logs.shutdown_logger()
-                self._spans.shutdown_tracer()
-            mock_client.store_or_test_results()
-        else:
-            process_results = super().process(sources, run_proc)
+        process_results = super().process(sources, run_proc)
 
         return process_results
+
+    def teardown(self) -> None:
+        self._logs.flush_logs()
+        self._spans.flush_traces()
 
 
 def _overwrite_plugin_local_config_key(test_conf: TestConfiguration, plugin_name: str, key_name: str, new_value: Any):
