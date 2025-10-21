@@ -33,7 +33,6 @@ from abc import ABC, abstractmethod
 from types import NoneType
 from typing import Any, Dict, List, Optional, Tuple, Union, Generator
 
-from inflect import k
 import requests
 
 from dtagent.context import CONTEXT_NAME
