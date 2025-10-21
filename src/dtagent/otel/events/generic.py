@@ -92,17 +92,15 @@ class GenericEvents(AbstractEvents):
             return properties
 
         title = str(event_data.get("_MESSAGE", "")) or kwargs.get("title", "Dynatrace Snowflake Observability Agent event")
-        event_data_extended = kwargs.get("additional_payload", {}) | _unpack_payload(
-            event_data
-        )  # FIXME we should not unpack if this is not a standard data
+        event_data_extended = kwargs.get("additional_payload", {}) | event_data
 
         start_ts = get_timestamp_in_ms(event_data, kwargs.get("start_time_key", "START_TIME"), 1e6, None)
         end_ts = get_timestamp_in_ms(event_data, kwargs.get("end_time_key", "END_TIME"), 1e6, None)
 
         # we have map non-simple types to string, as events are not capable of mapping lists
-        for key, value in event_data_extended.items():
-            if not isinstance(value, (int, float, str, bool, NoneType)):
-                event_data_extended[key] = str(value)
+        # for key, value in event_data_extended.items():
+        #     if not isinstance(value, (int, float, str, bool, NoneType)):
+        #         event_data_extended[key] = str(value)
 
         if isinstance(event_type, EventType) and event_type not in EventType:
             raise ValueError(f"{event_type} is not a valid EventType value")

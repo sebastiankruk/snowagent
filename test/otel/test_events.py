@@ -68,16 +68,15 @@ class TestEvents:
                     # this will be reported as Availability problem
                     event_type=EventType.AVAILABILITY_EVENT,
                     title="Dynatrace Snowflake Observability Agent test event 2",
-                    events_data=[
-                        {
-                            "test.event.dtagent.number": 10,
-                            "test.event.dtagent.text": "some text",
-                            "test.event.dtagent.bool": True,
-                            "test.event.dtagent.list": [1, 2, 3],
-                            "test.event.dtagent.dict": {"k1": "v1", "k2": 2},
-                            "test.event.dtagent.datetime": get_now_timestamp(),
-                        }
-                    ],
+                    events_data=[{}],
+                    additional_payload={
+                        "test.event.dtagent.number": 10,
+                        "test.event.dtagent.text": "some text",
+                        "test.event.dtagent.bool": True,
+                        "test.event.dtagent.list": [1, 2, 3],
+                        "test.event.dtagent.dict": {"k1": "v1", "k2": 2},
+                        "test.event.dtagent.datetime": get_now_timestamp(),
+                    },
                     timeout=30,
                 )
                 assert events_sent + events.flush_events() >= 0
@@ -85,11 +84,10 @@ class TestEvents:
                 events_sent += events.send_events(
                     event_type=EventType.CUSTOM_ANNOTATION,
                     title="Dynatrace Snowflake Observability Agent test event 3",
-                    events_data=[
-                        {
-                            "test.event.dtagent.info": "timeout",
-                        }
-                    ],
+                    events_data=[{}],
+                    additional_payload={
+                        "test.event.dtagent.info": "timeout",
+                    },
                     timeout=30,
                 )
                 assert events_sent + events.flush_events() >= 0
@@ -102,11 +100,10 @@ class TestEvents:
                     # this will be reported as Custom problem
                     event_type=EventType.CUSTOM_ALERT,
                     title="Dynatrace Snowflake Observability Agent test event 4",
-                    events_data=[
-                        {
-                            "test.event.dtagent.info": "10 min in the past",
-                        }
-                    ],
+                    events_data=[{}],
+                    additional_payload={
+                        "test.event.dtagent.info": "10 min in the past",
+                    },
                     start_time=ten_minutes_ago_ms,
                     timeout=15,
                 )
@@ -115,11 +112,10 @@ class TestEvents:
                 events_sent += events.send_events(
                     event_type=EventType.CUSTOM_DEPLOYMENT,
                     title="Dynatrace Snowflake Observability Agent test event 5",
-                    events_data=[
-                        {
-                            "test.event.dtagent.info": "15 min in the future",
-                        }
-                    ],
+                    events_data=[{}],
+                    additional_payload={
+                        "test.event.dtagent.info": "15 min in the future",
+                    },
                     end_time=fifteen_minutes_from_now_ms,
                 )
                 assert events_sent + events.flush_events() >= 0
@@ -127,11 +123,10 @@ class TestEvents:
                 events_sent += events.send_events(
                     event_type=EventType.CUSTOM_DEPLOYMENT,
                     title="Dynatrace Snowflake Observability Agent test event 6",
-                    events_data=[
-                        {
-                            "test.event.dtagent.info": "15 min in the future",
-                        }
-                    ],
+                    events_data=[{}],
+                    additional_payload={
+                        "test.event.dtagent.info": "15 min in the future",
+                    },
                     context=get_context_by_name("data_volume"),
                     end_time=fifteen_minutes_from_now_ms,
                 )
