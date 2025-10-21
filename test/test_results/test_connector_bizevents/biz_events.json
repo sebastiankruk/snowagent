@@ -20,7 +20,7 @@
   {
     "specversion": "1.0",
     "source": "test.dsoa2025.snowflakecomputing.com",
-    "type": 6,
+    "type": "CUSTOM_INFO",
     "data": {
       "event.provider": "test.dsoa2025.snowflakecomputing.com",
       "dsoa.task.name": "test_events",

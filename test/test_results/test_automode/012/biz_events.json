@@ -49,10 +49,11 @@
   {
     "specversion": "1.0",
     "source": "test.dsoa2025.snowflakecomputing.com",
-    "type": "CUSTOM_INFO",
+    "type": "PERFORMANCE_EVENT",
     "data": {
       "status.code": "OK",
       "_message": "This is a test object 2",
+      "event.type": "PERFORMANCE_EVENT",
       "value.int": 10000000,
       "value.str": "test 2",
       "value.bool": false,
@@ -77,9 +78,10 @@
   {
     "specversion": "1.0",
     "source": "test.dsoa2025.snowflakecomputing.com",
-    "type": "CUSTOM_INFO",
+    "type": "ERROR_EVENT",
     "data": {
       "status.code": "ERROR",
+      "event.type": "ERROR_EVENT",
       "test.message": "This is a test object 3",
       "value.int": -10,
       "value.str": "error test",

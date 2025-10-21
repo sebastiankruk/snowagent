@@ -198,10 +198,11 @@ class TelemetrySender(AbstractDynatraceSnowAgentConnector, Plugin):
                     processed_last_timestamp = row_dict.get("timestamp", None)
                     event_dict = _cleanup_dict({"timestamp": processed_last_timestamp, **row_dict})
                     s_log_level = "INFO" if row_dict.get("status.code", "OK") == "OK" else "ERROR"
-
+                    _message = row_dict.pop("_message", None)
+                    # FIXME event_dict vs row_dict
                     if self._send_logs:
                         self._logs.send_log(
-                            row_dict.get("_message", f"Log entry sent with {self.__context_name}"),
+                            _message or f"Log entry sent with {self.__context_name}",
                             extra=event_dict,
                             log_level=getattr(logging, s_log_level, logging.INFO),
                             context=self.__context,
@@ -213,7 +214,7 @@ class TelemetrySender(AbstractDynatraceSnowAgentConnector, Plugin):
                             davis_events_cnt += self._davis_events.report_via_api(
                                 query_data=row_dict,
                                 event_type=(EventType[row_dict["event.type"]] if "event.type" in row_dict else EventType.CUSTOM_INFO),
-                                title=row_dict.get("_message", f"Log entry sent with {self.__context_name}"),
+                                title=_message or f"Event sent with {self.__context_name}",
                                 context=self.__context,
                             )
                         except ValueError as e:
