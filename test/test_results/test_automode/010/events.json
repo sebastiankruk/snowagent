@@ -18,7 +18,7 @@
     }
   },
   {
-    "eventType": "CUSTOM_INFO",
+    "eventType": "PERFORMANCE_EVENT",
     "title": "This is a test object 2",
     "properties": {
       "status.code": "OK",
@@ -37,8 +37,8 @@
     }
   },
   {
-    "eventType": "CUSTOM_INFO",
-    "title": "Dynatrace Snowflake Observability Agent event",
+    "eventType": "ERROR_EVENT",
+    "title": "Event sent with telemetry_sender",
     "properties": {
       "status.code": "ERROR",
       "event.type": "ERROR_EVENT",

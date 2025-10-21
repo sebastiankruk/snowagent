@@ -196,9 +196,11 @@ class TelemetrySender(AbstractDynatraceSnowAgentConnector, Plugin):
                     from dtagent.util import _cleanup_dict  # COMPILE_REMOVE
 
                     processed_last_timestamp = row_dict.get("timestamp", None)
-                    clean_dict = _cleanup_dict({"timestamp": processed_last_timestamp, **row_dict}).copy()
+                    _message = row_dict.get("_message", None)
+                    clean_dict = {
+                        k: v for k, v in _cleanup_dict({"timestamp": processed_last_timestamp, **row_dict}).items() if k != "_message"
+                    }
                     s_log_level = "INFO" if row_dict.get("status.code", "OK") == "OK" else "ERROR"
-                    _message = clean_dict.pop("_message", None)
 
                     if self._send_logs:
                         self._logs.send_log(
@@ -261,6 +263,7 @@ class TelemetrySender(AbstractDynatraceSnowAgentConnector, Plugin):
                         bizevents_cnt += self._biz_events.report_via_api(
                             query_data=chunk,
                             event_type=EventType.CUSTOM_INFO,
+                            title=f"BizEvent sent with {self.__context_name}",
                             context=self.__context,
                             is_data_structured=False,
                         )
@@ -268,6 +271,7 @@ class TelemetrySender(AbstractDynatraceSnowAgentConnector, Plugin):
                         events_cnt += self._events.report_via_api(
                             query_data=chunk,
                             event_type=EventType.CUSTOM_INFO,
+                            title=f"Event sent with {self.__context_name}",
                             context=self.__context,
                             is_data_structured=False,
                         )

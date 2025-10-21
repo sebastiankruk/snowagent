@@ -81,7 +81,6 @@ class MockTelemetryClient:
                 sorted_expected = sorted(expected_content, key=sort_key)
                 import difflib
 
-                diff = ""
                 if sorted_actual != sorted_expected:
                     _, filepath = self._determine_file_name(telemetry_type)
                     if telemetry_type == "metrics":

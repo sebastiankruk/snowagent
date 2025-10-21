@@ -92,11 +92,13 @@ class GenericEvents(AbstractEvents):
             return properties
 
         title = (
-            str(event_data.pop("_MESSAGE", ""))
-            or str(event_data.pop("_message", ""))
+            str(event_data.get("_MESSAGE", ""))
+            or str(event_data.get("_message", ""))
             or kwargs.get("title", "Dynatrace Snowflake Observability Agent event")
         )
-        event_data_extended = kwargs.get("additional_payload", {}) | event_data
+        event_data_extended = kwargs.get("additional_payload", {}) | {
+            k: v for k, v in event_data.items() if k != "_MESSAGE" and k != "_message"
+        }
 
         start_ts = get_timestamp_in_ms(event_data, kwargs.get("start_time_key", "START_TIME"), 1e6, None)
         end_ts = get_timestamp_in_ms(event_data, kwargs.get("end_time_key", "END_TIME"), 1e6, None)
@@ -110,7 +112,7 @@ class GenericEvents(AbstractEvents):
             raise ValueError(f"{event_type} is not a valid EventType value")
 
         event_payload = {
-            "eventType": str(event_type),
+            "eventType": str(event_data.get("event.type", event_type)),
             "title": title,
             "properties": __limit_to_api(
                 _pack_values_to_json_strings(

@@ -38,7 +38,7 @@
   },
   {
     "eventType": "ERROR_EVENT",
-    "title": "Log entry sent with telemetry_sender",
+    "title": "Event sent with telemetry_sender",
     "properties": {
       "status.code": "ERROR",
       "event.type": "ERROR_EVENT",
