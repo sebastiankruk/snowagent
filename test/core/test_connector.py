@@ -138,43 +138,43 @@ class TestTelemetrySender:
 
         # Results are (Count of objects, log lines, metrics, events, bizevents, and davis events sent)
 
-        # # sending all data from a given (standard structure) view
-        # assert (2, 2, 2, 3, 0, 0) == telemetry_test_sender(
-        #     session, "APP.V_DATA_VOLUME", {}, config=_utils.get_config(), test_source="test_automode/000"
-        # )
-        # # sending data from a given (standard structure) view, excluding metrics
-        # assert (2, 2, 0, 3, 0, 0) == telemetry_test_sender(
-        #     session, "APP.V_DATA_VOLUME", {"metrics": False}, config=_utils.get_config(), test_source="test_automode/001"
-        # )
-        # # sending data from a given (standard structure) view, excluding events
-        # assert (2, 2, 2, 0, 0, 0) == telemetry_test_sender(
-        #     session, "APP.V_DATA_VOLUME", {"events": False}, config=_utils.get_config(), test_source="test_automode/002"
-        # )
-        # # sending data from a given (standard structure) view, excluding logs
-        # assert (2, 0, 2, 3, 0, 0) == telemetry_test_sender(
-        #     session, "APP.V_DATA_VOLUME", {"logs": False}, config=_utils.get_config(), test_source="test_automode/003"
-        # )
+        # sending all data from a given (standard structure) view
+        assert (2, 2, 2, 3, 0, 0) == telemetry_test_sender(
+            session, "APP.V_DATA_VOLUME", {}, config=_utils.get_config(), test_source="test_automode/000"
+        )
+        # sending data from a given (standard structure) view, excluding metrics
+        assert (2, 2, 0, 3, 0, 0) == telemetry_test_sender(
+            session, "APP.V_DATA_VOLUME", {"metrics": False}, config=_utils.get_config(), test_source="test_automode/001"
+        )
+        # sending data from a given (standard structure) view, excluding events
+        assert (2, 2, 2, 0, 0, 0) == telemetry_test_sender(
+            session, "APP.V_DATA_VOLUME", {"events": False}, config=_utils.get_config(), test_source="test_automode/002"
+        )
+        # sending data from a given (standard structure) view, excluding logs
+        assert (2, 0, 2, 3, 0, 0) == telemetry_test_sender(
+            session, "APP.V_DATA_VOLUME", {"logs": False}, config=_utils.get_config(), test_source="test_automode/003"
+        )
 
-        # # sending all data from a given (standard structure) object
-        # assert (1, 1, 1, 2, 0, 0) == telemetry_test_sender(
-        #     session, structured_test_data[0], {}, config=_utils.get_config(), test_source="test_automode/004"
-        # )
-        # # sending all data from a given (standard structure) view
-        # assert (2, 2, 2, 3, 0, 0) == telemetry_test_sender(
-        #     session, structured_test_data, {}, config=_utils.get_config(), test_source="test_automode/005"
-        # )
-        # # sending data from a given (standard structure) view, excluding metrics
-        # assert (2, 2, 0, 3, 0, 0) == telemetry_test_sender(
-        #     session, structured_test_data, {"metrics": False}, config=_utils.get_config(), test_source="test_automode/006"
-        # )
-        # # sending data from a given (standard structure) view, excluding events
-        # assert (2, 2, 2, 0, 0, 0) == telemetry_test_sender(
-        #     session, structured_test_data, {"events": False}, config=_utils.get_config(), test_source="test_automode/007"
-        # )
-        # # sending data from a given (standard structure) view, excluding logs
-        # assert (2, 0, 2, 3, 0, 0) == telemetry_test_sender(
-        #     session, structured_test_data, {"logs": False}, config=_utils.get_config(), test_source="test_automode/008"
-        # )
+        # sending all data from a given (standard structure) object
+        assert (1, 1, 1, 2, 0, 0) == telemetry_test_sender(
+            session, structured_test_data[0], {}, config=_utils.get_config(), test_source="test_automode/004"
+        )
+        # sending all data from a given (standard structure) view
+        assert (2, 2, 2, 3, 0, 0) == telemetry_test_sender(
+            session, structured_test_data, {}, config=_utils.get_config(), test_source="test_automode/005"
+        )
+        # sending data from a given (standard structure) view, excluding metrics
+        assert (2, 2, 0, 3, 0, 0) == telemetry_test_sender(
+            session, structured_test_data, {"metrics": False}, config=_utils.get_config(), test_source="test_automode/006"
+        )
+        # sending data from a given (standard structure) view, excluding events
+        assert (2, 2, 2, 0, 0, 0) == telemetry_test_sender(
+            session, structured_test_data, {"events": False}, config=_utils.get_config(), test_source="test_automode/007"
+        )
+        # sending data from a given (standard structure) view, excluding logs
+        assert (2, 0, 2, 3, 0, 0) == telemetry_test_sender(
+            session, structured_test_data, {"logs": False}, config=_utils.get_config(), test_source="test_automode/008"
+        )
 
         # sending all data from a given (custom structure) view as logs
         assert (3, 3, 0, 0, 0, 0) == telemetry_test_sender(
