@@ -7,7 +7,6 @@
       "event.provider": "test.dsoa2025.snowflakecomputing.com",
       "dsoa.task.name": "telemetry_sender",
       "dsoa.task.exec.status": "STARTED",
-      "event.type": "dsoa.task",
       "app.bundle": "self-monitoring",
       "app.id": "dynatrace.snowagent",
       "db.system": "snowflake",
@@ -37,7 +36,6 @@
         "k": "v",
         "k2": 2
       },
-      "event.type": "CUSTOM_INFO",
       "app.bundle": "telemetry_sender",
       "app.id": "dynatrace.snowagent",
       "db.system": "snowflake",
@@ -55,7 +53,6 @@
     "data": {
       "status.code": "OK",
       "_message": "This is a test object 2",
-      "event.type": "CUSTOM_INFO",
       "value.int": 10000000,
       "value.str": "test 2",
       "value.bool": false,
@@ -83,7 +80,6 @@
     "type": "CUSTOM_INFO",
     "data": {
       "status.code": "ERROR",
-      "event.type": "CUSTOM_INFO",
       "test.message": "This is a test object 3",
       "value.int": -10,
       "value.str": "error test",
@@ -114,7 +110,6 @@
       "event.provider": "test.dsoa2025.snowflakecomputing.com",
       "dsoa.task.name": "telemetry_sender",
       "dsoa.task.exec.status": "FINISHED",
-      "event.type": "dsoa.task",
       "app.bundle": "self-monitoring",
       "app.id": "dynatrace.snowagent",
       "db.system": "snowflake",
