@@ -57,16 +57,16 @@ class TestEvents:
         with mock_client.mock_telemetry_sending():
             events = self._dtagent._get_davis_events()
 
-            assert events.send_event(
-                event_type=EventType.CUSTOM_INFO,
-                title="Dynatrace Snowflake Observability Agent test event 1",
+            events_sent = events.send_events(
+                event_type=EventType.CUSTOM_INFO, title="Dynatrace Snowflake Observability Agent test event 1", events_data={}
             )
+            assert events_sent + events.flush_events() >= 0
 
-            assert events.send_event(
+            events_sent += events.send_events(
                 # this will be reported as Availability problem
                 event_type=EventType.AVAILABILITY_EVENT,
                 title="Dynatrace Snowflake Observability Agent test event 2",
-                properties={
+                events_data={
                     "test.event.dtagent.number": 10,
                     "test.event.dtagent.text": "some text",
                     "test.event.dtagent.bool": True,
@@ -76,49 +76,54 @@ class TestEvents:
                 },
                 timeout=30,
             )
+            assert events_sent + events.flush_events() >= 0
 
-            assert events.send_event(
+            events_sent += events.send_events(
                 event_type=EventType.CUSTOM_ANNOTATION,
                 title="Dynatrace Snowflake Observability Agent test event 3",
-                properties={
+                events_data={
                     "test.event.dtagent.info": "timeout",
                 },
                 timeout=30,
             )
+            assert events_sent + events.flush_events() >= 0
 
             current_time_ms = int(time.time() * 1000)
             ten_minutes_ago_ms = current_time_ms - (10 * 60 * 1000)
             fifteen_minutes_from_now_ms = current_time_ms + (15 * 60 * 1000)
 
-            assert events.send_event(
+            events_sent += events.send_events(
                 # this will be reported as Custom problem
                 event_type=EventType.CUSTOM_ALERT,
                 title="Dynatrace Snowflake Observability Agent test event 4",
-                properties={
+                events_data={
                     "test.event.dtagent.info": "10 min in the past",
                 },
                 start_time=ten_minutes_ago_ms,
                 timeout=15,
             )
+            assert events_sent + events.flush_events() >= 0
 
-            assert events.send_event(
+            events_sent += events.send_events(
                 event_type=EventType.CUSTOM_DEPLOYMENT,
                 title="Dynatrace Snowflake Observability Agent test event 5",
-                properties={
+                events_data={
                     "test.event.dtagent.info": "15 min in the future",
                 },
                 end_time=fifteen_minutes_from_now_ms,
             )
+            assert events_sent + events.flush_events() >= 0
 
-            assert events.send_event(
+            events_sent += events.send_events(
                 event_type=EventType.CUSTOM_DEPLOYMENT,
                 title="Dynatrace Snowflake Observability Agent test event 6",
-                properties={
+                events_data={
                     "test.event.dtagent.info": "15 min in the future",
                 },
                 context=get_context_by_name("data_volume"),
                 end_time=fifteen_minutes_from_now_ms,
             )
+            assert events_sent + events.flush_events() >= 0
 
             assert events.flush_events()
         mock_client.store_or_test_results()
@@ -130,7 +135,7 @@ class TestEvents:
 
         mock_client = MockTelemetryClient("test_send_bizevents_directly")
         with mock_client.mock_telemetry_sending():
-            events = self._dtagent._get_bizevents()
+            events = self._dtagent._get_biz_events()
 
             events_sent = events.send_events(
                 [
@@ -207,7 +212,7 @@ class TestEvents:
 
         mock_client = MockTelemetryClient("test_send_results_as_bizevents")
         with mock_client.mock_telemetry_sending():
-            bizevents = self._dtagent._get_bizevents()
+            bizevents = self._dtagent._get_biz_events()
 
             PICKLE_NAME = "test/test_data/data_volume.pkl"
 
@@ -225,7 +230,7 @@ class TestEvents:
     def test_dtagent_bizevents(self):
         mock_client = MockTelemetryClient("test_dtagent_bizevents")
         with mock_client.mock_telemetry_sending():
-            bizevents = self._dtagent._get_bizevents()
+            bizevents = self._dtagent._get_biz_events()
 
             cnt = bizevents.report_via_api(
                 context=get_context_by_name("self-monitoring"),
