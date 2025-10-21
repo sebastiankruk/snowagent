@@ -92,7 +92,9 @@ class GenericEvents(AbstractEvents):
             return properties
 
         title = str(event_data.get("_MESSAGE", "")) or kwargs.get("title", "Dynatrace Snowflake Observability Agent event")
-        event_data_extended = kwargs.get("additional_payload", {}) | _unpack_payload(event_data)
+        event_data_extended = kwargs.get("additional_payload", {}) | _unpack_payload(
+            event_data
+        )  # FIXME we should not unpack if this is not a standard data
 
         start_ts = get_timestamp_in_ms(event_data, kwargs.get("start_time_key", "START_TIME"), 1e6, None)
         end_ts = get_timestamp_in_ms(event_data, kwargs.get("end_time_key", "END_TIME"), 1e6, None)

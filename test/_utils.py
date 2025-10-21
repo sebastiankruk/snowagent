@@ -240,7 +240,7 @@ def telemetry_test_sender(
     """
     Invokes send_data function on a LocalTelemetrySender instance, which uses pickled data for testing purposes
     Returns:
-        Tuple[int, int, int, int, int]: Count of objects, log lines, metrics, events, bizevents, and davis events sent
+        Tuple[int, int, int, int, int, int]: Count of objects, log lines, metrics, events, bizevents, and davis events sent
     """
     config._config["otel"]["spans"]["max_export_batch_size"] = 1
     config._config["otel"]["logs"]["max_export_batch_size"] = 1

@@ -1,0 +1,72 @@
+[
+  {
+    "eventType": "CUSTOM_INFO",
+    "title": "Dynatrace Snowflake Observability Agent test event 1",
+    "properties": {
+      "db.system": "snowflake",
+      "service.name": "test.dsoa2025",
+      "deployment.environment": "TEST",
+      "host.name": "test.dsoa2025.snowflakecomputing.com",
+      "telemetry.exporter.name": "dynatrace.snowagent"
+    }
+  },
+  {
+    "eventType": "AVAILABILITY_EVENT",
+    "title": "Dynatrace Snowflake Observability Agent test event 2",
+    "properties": {
+      "db.system": "snowflake",
+      "service.name": "test.dsoa2025",
+      "deployment.environment": "TEST",
+      "host.name": "test.dsoa2025.snowflakecomputing.com",
+      "telemetry.exporter.name": "dynatrace.snowagent"
+    },
+    "timeout": 30
+  },
+  {
+    "eventType": "CUSTOM_ANNOTATION",
+    "title": "Dynatrace Snowflake Observability Agent test event 3",
+    "properties": {
+      "db.system": "snowflake",
+      "service.name": "test.dsoa2025",
+      "deployment.environment": "TEST",
+      "host.name": "test.dsoa2025.snowflakecomputing.com",
+      "telemetry.exporter.name": "dynatrace.snowagent"
+    },
+    "timeout": 30
+  },
+  {
+    "eventType": "CUSTOM_ALERT",
+    "title": "Dynatrace Snowflake Observability Agent test event 4",
+    "properties": {
+      "db.system": "snowflake",
+      "service.name": "test.dsoa2025",
+      "deployment.environment": "TEST",
+      "host.name": "test.dsoa2025.snowflakecomputing.com",
+      "telemetry.exporter.name": "dynatrace.snowagent"
+    },
+    "timeout": 15
+  },
+  {
+    "eventType": "CUSTOM_DEPLOYMENT",
+    "title": "Dynatrace Snowflake Observability Agent test event 5",
+    "properties": {
+      "db.system": "snowflake",
+      "service.name": "test.dsoa2025",
+      "deployment.environment": "TEST",
+      "host.name": "test.dsoa2025.snowflakecomputing.com",
+      "telemetry.exporter.name": "dynatrace.snowagent"
+    }
+  },
+  {
+    "eventType": "CUSTOM_DEPLOYMENT",
+    "title": "Dynatrace Snowflake Observability Agent test event 6",
+    "properties": {
+      "db.system": "snowflake",
+      "service.name": "test.dsoa2025",
+      "deployment.environment": "TEST",
+      "host.name": "test.dsoa2025.snowflakecomputing.com",
+      "telemetry.exporter.name": "dynatrace.snowagent",
+      "dsoa.run.context": "data_volume"
+    }
+  }
+]

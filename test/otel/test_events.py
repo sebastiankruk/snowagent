@@ -51,82 +51,96 @@ class TestEvents:
         assert str(t) == "CUSTOM_ALERT", "event type {t} should render in capital letters"
 
     def test_send_events_directly(self):
-        import time
 
-        mock_client = MockTelemetryClient("test_send_events_directly")
-        with mock_client.mock_telemetry_sending():
-            events = self._dtagent._get_davis_events()
+        def _test_send_events_directly(test_mode="davis"):
+            import time
 
-            events_sent = events.send_events(
-                event_type=EventType.CUSTOM_INFO, title="Dynatrace Snowflake Observability Agent test event 1", events_data={}
-            )
-            assert events_sent + events.flush_events() >= 0
+            mock_client = MockTelemetryClient(f"test_send_{test_mode}_events_directly")
+            with mock_client.mock_telemetry_sending():
+                events = self._dtagent._get_davis_events() if test_mode == "davis" else self._dtagent._get_events()
 
-            events_sent += events.send_events(
-                # this will be reported as Availability problem
-                event_type=EventType.AVAILABILITY_EVENT,
-                title="Dynatrace Snowflake Observability Agent test event 2",
-                events_data={
-                    "test.event.dtagent.number": 10,
-                    "test.event.dtagent.text": "some text",
-                    "test.event.dtagent.bool": True,
-                    "test.event.dtagent.list": [1, 2, 3],
-                    "test.event.dtagent.dict": {"k1": "v1", "k2": 2},
-                    "test.event.dtagent.datetime": get_now_timestamp(),
-                },
-                timeout=30,
-            )
-            assert events_sent + events.flush_events() >= 0
+                events_sent = events.send_events(
+                    event_type=EventType.CUSTOM_INFO, title="Dynatrace Snowflake Observability Agent test event 1", events_data=[{}]
+                )
+                assert events_sent + events.flush_events() >= 0
 
-            events_sent += events.send_events(
-                event_type=EventType.CUSTOM_ANNOTATION,
-                title="Dynatrace Snowflake Observability Agent test event 3",
-                events_data={
-                    "test.event.dtagent.info": "timeout",
-                },
-                timeout=30,
-            )
-            assert events_sent + events.flush_events() >= 0
+                events_sent += events.send_events(
+                    # this will be reported as Availability problem
+                    event_type=EventType.AVAILABILITY_EVENT,
+                    title="Dynatrace Snowflake Observability Agent test event 2",
+                    events_data=[
+                        {
+                            "test.event.dtagent.number": 10,
+                            "test.event.dtagent.text": "some text",
+                            "test.event.dtagent.bool": True,
+                            "test.event.dtagent.list": [1, 2, 3],
+                            "test.event.dtagent.dict": {"k1": "v1", "k2": 2},
+                            "test.event.dtagent.datetime": get_now_timestamp(),
+                        }
+                    ],
+                    timeout=30,
+                )
+                assert events_sent + events.flush_events() >= 0
 
-            current_time_ms = int(time.time() * 1000)
-            ten_minutes_ago_ms = current_time_ms - (10 * 60 * 1000)
-            fifteen_minutes_from_now_ms = current_time_ms + (15 * 60 * 1000)
+                events_sent += events.send_events(
+                    event_type=EventType.CUSTOM_ANNOTATION,
+                    title="Dynatrace Snowflake Observability Agent test event 3",
+                    events_data=[
+                        {
+                            "test.event.dtagent.info": "timeout",
+                        }
+                    ],
+                    timeout=30,
+                )
+                assert events_sent + events.flush_events() >= 0
 
-            events_sent += events.send_events(
-                # this will be reported as Custom problem
-                event_type=EventType.CUSTOM_ALERT,
-                title="Dynatrace Snowflake Observability Agent test event 4",
-                events_data={
-                    "test.event.dtagent.info": "10 min in the past",
-                },
-                start_time=ten_minutes_ago_ms,
-                timeout=15,
-            )
-            assert events_sent + events.flush_events() >= 0
+                current_time_ms = int(time.time() * 1000)
+                ten_minutes_ago_ms = current_time_ms - (10 * 60 * 1000)
+                fifteen_minutes_from_now_ms = current_time_ms + (15 * 60 * 1000)
 
-            events_sent += events.send_events(
-                event_type=EventType.CUSTOM_DEPLOYMENT,
-                title="Dynatrace Snowflake Observability Agent test event 5",
-                events_data={
-                    "test.event.dtagent.info": "15 min in the future",
-                },
-                end_time=fifteen_minutes_from_now_ms,
-            )
-            assert events_sent + events.flush_events() >= 0
+                events_sent += events.send_events(
+                    # this will be reported as Custom problem
+                    event_type=EventType.CUSTOM_ALERT,
+                    title="Dynatrace Snowflake Observability Agent test event 4",
+                    events_data=[
+                        {
+                            "test.event.dtagent.info": "10 min in the past",
+                        }
+                    ],
+                    start_time=ten_minutes_ago_ms,
+                    timeout=15,
+                )
+                assert events_sent + events.flush_events() >= 0
 
-            events_sent += events.send_events(
-                event_type=EventType.CUSTOM_DEPLOYMENT,
-                title="Dynatrace Snowflake Observability Agent test event 6",
-                events_data={
-                    "test.event.dtagent.info": "15 min in the future",
-                },
-                context=get_context_by_name("data_volume"),
-                end_time=fifteen_minutes_from_now_ms,
-            )
-            assert events_sent + events.flush_events() >= 0
+                events_sent += events.send_events(
+                    event_type=EventType.CUSTOM_DEPLOYMENT,
+                    title="Dynatrace Snowflake Observability Agent test event 5",
+                    events_data=[
+                        {
+                            "test.event.dtagent.info": "15 min in the future",
+                        }
+                    ],
+                    end_time=fifteen_minutes_from_now_ms,
+                )
+                assert events_sent + events.flush_events() >= 0
 
-            assert events.flush_events()
-        mock_client.store_or_test_results()
+                events_sent += events.send_events(
+                    event_type=EventType.CUSTOM_DEPLOYMENT,
+                    title="Dynatrace Snowflake Observability Agent test event 6",
+                    events_data=[
+                        {
+                            "test.event.dtagent.info": "15 min in the future",
+                        }
+                    ],
+                    context=get_context_by_name("data_volume"),
+                    end_time=fifteen_minutes_from_now_ms,
+                )
+                assert events_sent + events.flush_events() >= 0
+
+            mock_client.store_or_test_results()
+
+        # _test_send_events_directly(test_mode="davis")
+        _test_send_events_directly(test_mode="generic")
 
     def test_send_bizevents_directly(self):
         import time

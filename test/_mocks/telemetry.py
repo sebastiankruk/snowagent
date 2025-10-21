@@ -83,6 +83,7 @@ class MockTelemetryClient:
 
                 diff = ""
                 if sorted_actual != sorted_expected:
+                    _, filepath = self._determine_file_name(telemetry_type)
                     if telemetry_type == "metrics":
                         diff = "\n".join(
                             difflib.unified_diff(sorted_expected, sorted_actual, fromfile="expected", tofile="actual", lineterm="")
@@ -97,21 +98,23 @@ class MockTelemetryClient:
                         )
                     assert (
                         sorted_actual == sorted_expected
-                    ), f"Telemetry type {telemetry_type} does not match expected results:\n\nDiff:\n{diff}"
+                    ), f"Telemetry type {telemetry_type} does not match expected results from {filepath}:\n\nDiff:\n{diff}"
 
     @contextmanager
     def mock_telemetry_sending(self):
         with (
             patch("requests.sessions.Session.post") as mock_session_post,
             patch("dtagent.otel.metrics.requests.post") as mock_metrics,
-            patch("dtagent.otel.events.requests.post") as mock_events,
-            patch("dtagent.otel.bizevents.requests.post") as mock_bizevents,
+            patch("dtagent.otel.events.generic.requests.post") as mock_generic_events,
+            patch("dtagent.otel.events.davis.requests.post") as mock_davis_events,
+            patch("dtagent.otel.events.bizevents.requests.post") as mock_bizevents,
             patch("snowflake.snowpark.Session.sql") as mock_sql,
         ):
             # Set up HTTP mocks
             mock_session_post.side_effect = self._side_effect_function
             mock_metrics.side_effect = self._side_effect_function
-            mock_events.side_effect = self._side_effect_function
+            mock_generic_events.side_effect = self._side_effect_function
+            mock_davis_events.side_effect = self._side_effect_function
             mock_bizevents.side_effect = self._side_effect_function
 
             # Set up session.sql mock to prevent actual Snowflake calls
@@ -148,7 +151,7 @@ class MockTelemetryClient:
             tuple[str, str]: file path and extension for given telemetry type
         """
         ext = "txt" if telemetry_type == "metrics" else "json"
-        filepath = f"{self.test_results_dir}/{telemetry_type}.{ext}" if self.test_results_dir else None
+        filepath = os.path.join(self.test_results_dir, f"{telemetry_type}.{ext}") if self.test_results_dir else None
         return ext, filepath
 
     def _load_telemetry_test_data(self, telemetry_type: str) -> Any:
@@ -293,8 +296,9 @@ class MockTelemetryClient:
             Returns:
                 str: The determined telemetry type.
             """
-            from dtagent.otel.bizevents import BizEvents
-            from dtagent.otel.events import Events
+            from dtagent.otel.events.bizevents import BizEvents
+            from dtagent.otel.events.generic import GenericEvents
+            from dtagent.otel.events.davis import DavisEvents
             from dtagent.otel.logs import Logs
             from dtagent.otel.metrics import Metrics
             from dtagent.otel.spans import Spans
@@ -304,8 +308,11 @@ class MockTelemetryClient:
             if url.endswith(BizEvents.ENDPOINT_PATH):
                 telemetry_type = "biz_events"
                 mock_response.status_code = 202
-            elif url.endswith(Events.ENDPOINT_PATH):
+            elif url.endswith(GenericEvents.ENDPOINT_PATH):
                 telemetry_type = "events"
+                mock_response.status_code = 202
+            elif url.endswith(DavisEvents.ENDPOINT_PATH):
+                telemetry_type = "davis_events"
                 mock_response.status_code = 201
             elif url.endswith(Logs.ENDPOINT_PATH):
                 telemetry_type = "logs"
