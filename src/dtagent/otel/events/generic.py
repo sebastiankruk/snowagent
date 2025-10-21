@@ -96,7 +96,7 @@ class GenericEvents(AbstractEvents):
             or kwargs.get("title", "Dynatrace Snowflake Observability Agent event")
         )
         event_data_extended = kwargs.get("additional_payload", {}) | {
-            k: v for k, v in event_data.items() if k != "_MESSAGE" and k != "_message"
+            k: v for k, v in event_data.items() if k not in ("_MESSAGE", "_message")
         }
 
         start_ts = get_timestamp_in_ms(event_data, kwargs.get("start_time_key", "START_TIME"), 1e6, None)
