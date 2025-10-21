@@ -37,7 +37,6 @@
     "type": "CUSTOM_ANNOTATION",
     "data": {
       "test.event.dtagent.info": "timeout",
-      "event.type": "CUSTOM_ANNOTATION",
       "app.bundle": "bizevents",
       "app.id": "dynatrace.snowagent",
       "db.system": "snowflake",

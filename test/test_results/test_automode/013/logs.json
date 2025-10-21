@@ -22,7 +22,7 @@
     "entries": 1,
     "log_lines": 1,
     "events": 1,
-    "bizevents": 1,
+    "biz_events": 1,
     "dsoa.run.context": "self_monitoring"
   }
 ]
