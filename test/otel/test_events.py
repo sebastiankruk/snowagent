@@ -134,7 +134,7 @@ class TestEvents:
 
             mock_client.store_or_test_results()
 
-        # _test_send_events_directly(test_mode="davis")
+        _test_send_events_directly(test_mode="davis")
         _test_send_events_directly(test_mode="generic")
 
     def test_send_bizevents_directly(self):

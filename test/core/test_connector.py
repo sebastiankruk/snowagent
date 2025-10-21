@@ -104,7 +104,7 @@ class TestTelemetrySender:
         assert results[-1] == 0  # bizevents
 
     @pytest.mark.xdist_group(name="test_telemetry")
-    def test_coonector_bizevents(self):
+    def test_connector_bizevents(self):
         session = _get_session()
 
         sender = LocalTelemetrySender(
@@ -120,7 +120,7 @@ class TestTelemetrySender:
                 "dsoa.task.exec.status": "FINISHED",
             }
         ]
-        mock_client = MockTelemetryClient("test_coonector_bizevents")
+        mock_client = MockTelemetryClient("test_connector_bizevents")
         with mock_client.mock_telemetry_sending():
             results = sender.send_data(data)
             sender._logs.shutdown_logger()
