@@ -55,7 +55,7 @@ class TestEvents:
 
         mock_client = MockTelemetryClient("test_send_events_directly")
         with mock_client.mock_telemetry_sending():
-            events = self._dtagent._get_events()
+            events = self._dtagent._get_davis_events()
 
             assert events.send_event(
                 event_type=EventType.CUSTOM_INFO,
@@ -125,6 +125,7 @@ class TestEvents:
 
     def test_send_bizevents_directly(self):
         import time
+        events = self._dtagent._get_davis_events()
 
         mock_client = MockTelemetryClient("test_send_bizevents_directly")
         with mock_client.mock_telemetry_sending():
@@ -191,14 +192,13 @@ class TestEvents:
 
             PICKLE_NAME = "test/test_data/data_volume.pkl"
             for row_dict in _utils._get_unpickled_entries(PICKLE_NAME, limit=2):
+              events_sent = events.report_via_api(
+                  query_data=row_dict,
+                  event_type=EventType.CUSTOM_INFO,
+                  title="Test event for Data Volume",
+              )
+              assert events_sent + events.flush_events() > 0
 
-                assert events.report_via_api(
-                    query_data=row_dict,
-                    event_type=EventType.CUSTOM_INFO,
-                    title="Test event for Data Volume",
-                )
-
-            assert events.flush_events()
         mock_client.store_or_test_results()
 
     def test_send_results_as_bizevents(self):
