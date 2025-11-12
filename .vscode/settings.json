@@ -33,6 +33,7 @@
         "Acceldata",
         "ACCOUNTADMIN",
         "addopts",
+        "aiohttp",
         "apikey",
         "argjson",
         "bizevent",

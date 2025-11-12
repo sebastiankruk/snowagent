@@ -38,7 +38,7 @@ class OtelManager:
     _max_consecutive_fails: int = 0
     _consecutive_fail_count: int = 0
     _to_abort: bool = False
-    _last_response: requests.Response
+    _last_response = None
 
     @staticmethod
     def set_max_fail_count(set_to: int = 10):
@@ -61,7 +61,7 @@ class OtelManager:
         OtelManager._consecutive_fail_count = 0
 
     @staticmethod
-    def increase_current_fail_count(last_response: requests.Response, increase_by: int = 1) -> None:
+    def increase_current_fail_count(last_response, increase_by: int = 1) -> None:
         """Increases run time API fail count by specified number (default: 1).
         Updates last known response, flips the flag if current fail exceeds max allowed
         """
@@ -83,12 +83,27 @@ class OtelManager:
         if OtelManager._to_abort and OtelManager.get_current_fail_count() >= OtelManager.get_max_fails():
             from dtagent import LOG
 
+            # Handle both requests.Response and aiohttp.ClientResponse
+            response = OtelManager._last_response
+            if hasattr(response, "status_code"):  # requests.Response
+                status_code = response.status_code
+                reason = response.reason
+                text = response.text
+            elif hasattr(response, "status"):  # aiohttp.ClientResponse
+                status_code = response.status
+                reason = response.reason
+                text = response.text
+            else:
+                status_code = "unknown"
+                reason = "unknown"
+                text = str(response)
+
             error_message = (
                 "Too many failed attempts to send data to Dynatrace "
                 f"({OtelManager.get_current_fail_count()} / {OtelManager.get_max_fails()}), aborting run. Last response:\n"
-                f"                                error code: {OtelManager._last_response.status_code},\n"
-                f"                                reason: {OtelManager._last_response.reason},\n"
-                f"                                response: {OtelManager._last_response.text}"
+                f"                                error code: {status_code},\n"
+                f"                                reason: {reason},\n"
+                f"                                response: {text}"
             )
 
             LOG.error(error_message)

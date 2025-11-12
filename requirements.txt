@@ -25,6 +25,7 @@ snowflake>=1.5.1 # IMPORTANT: Requires Python >=3.9 and <3.12 (due to snowflake-
 pandas
 toml
 tzlocal
+aiohttp
 #%DEV:
 streamlit
 snowflake-snowpark-python==1.40.0
