@@ -116,6 +116,8 @@ class TestTelemetrySender:
 
     @pytest.mark.xdist_group(name="test_telemetry")
     def test_connector_bizevents(self):
+        import asyncio
+
         session = _get_session()
 
         sender = LocalTelemetrySender(
@@ -135,7 +137,7 @@ class TestTelemetrySender:
         context_name = "telemetry_sender"
         mock_client = MockTelemetryClient("test_connector_bizevents")
         with mock_client.mock_telemetry_sending():
-            results = sender.send_data(data)
+            results = asyncio.run(sender.send_data(data))
             sender._logs.shutdown_logger()
             sender._spans.shutdown_tracer()
         mock_client.store_or_test_results()

@@ -55,6 +55,7 @@ class TestEvents:
         # FIXME
         def _test_send_events_directly(test_mode="davis"):
             import time
+            import asyncio
 
             mock_client = MockTelemetryClient(f"test_send_{test_mode}_events_directly")
             with mock_client.mock_telemetry_sending():
@@ -62,7 +63,7 @@ class TestEvents:
                 events.send_events(
                     event_type=EventType.CUSTOM_INFO, title="Dynatrace Snowflake Observability Agent test event 1", events_data=[{}]
                 )
-                assert events.flush_events() >= 0
+                assert asyncio.run(events.flush_events()) >= 0
 
                 events.send_events(
                     # this will be reported as Availability problem
@@ -79,7 +80,7 @@ class TestEvents:
                     },
                     timeout=30,
                 )
-                assert events.flush_events() >= 0
+                assert asyncio.run(events.flush_events()) >= 0
 
                 events.send_events(
                     event_type=EventType.CUSTOM_ANNOTATION,
@@ -90,7 +91,7 @@ class TestEvents:
                     },
                     timeout=30,
                 )
-                assert events.flush_events() >= 0
+                assert asyncio.run(events.flush_events()) >= 0
 
                 current_time_ms = int(time.time() * 1000)
                 ten_minutes_ago_ms = current_time_ms - (10 * 60 * 1000)
@@ -107,7 +108,7 @@ class TestEvents:
                     start_time=ten_minutes_ago_ms,
                     timeout=15,
                 )
-                assert events.flush_events() >= 0
+                assert asyncio.run(events.flush_events()) >= 0
 
                 events.send_events(
                     event_type=EventType.CUSTOM_DEPLOYMENT,
@@ -118,7 +119,7 @@ class TestEvents:
                     },
                     end_time=fifteen_minutes_from_now_ms,
                 )
-                assert events.flush_events() >= 0
+                assert asyncio.run(events.flush_events()) >= 0
 
                 events.send_events(
                     event_type=EventType.CUSTOM_DEPLOYMENT,
@@ -132,7 +133,7 @@ class TestEvents:
                     ),
                     end_time=fifteen_minutes_from_now_ms,
                 )
-                assert events.flush_events() >= 0
+                assert asyncio.run(events.flush_events()) >= 0
 
             mock_client.store_or_test_results()
 
@@ -141,6 +142,7 @@ class TestEvents:
 
     def test_send_bizevents_directly(self):
         import time
+        import asyncio
 
         events = self._dtagent._get_davis_events()
 
@@ -156,7 +158,7 @@ class TestEvents:
                     }
                 ]
             )
-            assert events.flush_events() == 1
+            assert asyncio.run(events.flush_events()) == 1
 
             events.send_events(
                 [
@@ -188,12 +190,13 @@ class TestEvents:
                 ]
             )
 
-            events_sent = events.flush_events()
+            events_sent = asyncio.run(events.flush_events())
 
             assert events_sent == 4
         mock_client.store_or_test_results()
 
     def test_send_results_as_events(self):
+        import asyncio
         from test import _utils
 
         mock_client = MockTelemetryClient("test_send_results_as_events")
@@ -207,11 +210,12 @@ class TestEvents:
                     event_type=EventType.CUSTOM_INFO,
                     title="Test event for Data Volume",
                 )
-            assert events.flush_events() > 0
+            assert asyncio.run(events.flush_events()) > 0
 
         mock_client.store_or_test_results()
 
     def test_send_results_as_bizevents(self):
+        import asyncio
         from test import _utils
 
         mock_client = MockTelemetryClient("test_send_results_as_bizevents")
@@ -228,11 +232,13 @@ class TestEvents:
                 ),
             )
 
-            events_sent = bizevents.flush_events()
+            events_sent = asyncio.run(bizevents.flush_events())
             assert events_sent == 2
         mock_client.store_or_test_results()
 
     def test_dtagent_bizevents(self):
+        import asyncio
+
         mock_client = MockTelemetryClient("test_dtagent_bizevents")
         with mock_client.mock_telemetry_sending():
             bizevents = self._dtagent._get_biz_events()
@@ -253,6 +259,6 @@ class TestEvents:
                 is_data_structured=False,
             )
 
-            cnt = bizevents.flush_events()
+            cnt = asyncio.run(bizevents.flush_events())
             assert cnt == 1
         mock_client.store_or_test_results()

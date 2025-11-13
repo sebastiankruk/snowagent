@@ -143,7 +143,7 @@ class AbstractDynatraceSnowAgentConnector:
         """Wrapper around Configuration constructor call to re-use in Test"""
         return Configuration(session)
 
-    def report_execution_status(
+    async def report_execution_status(
         self, status: str, task_name: str, exec_id: str, details_dict: Optional[dict] = None, plugin_name: str = None
     ):
         """Sends BizEvent for given task with given status if BizEvents are allowed and send_bizevents_on_run is enabled"""
@@ -165,18 +165,18 @@ class AbstractDynatraceSnowAgentConnector:
                 context=get_context_name_and_run_id(plugin_name=plugin_name or task_name, context_name="self_monitoring", run_id=exec_id),
                 is_data_structured=False,
             )
-            bizevents_sent = self._biz_events.flush_events()
+            bizevents_sent = await self._biz_events.flush_events()
             if bizevents_sent == 0:
                 LOG.warning("Unable to report task execution status via BizEvents: %s", str(data_dict))
 
     def _set_max_consecutive_fails(self):
         OtelManager.set_max_fail_count(self._configuration.get("max_consecutive_api_fails", context="otel", default_value=10))
 
-    def handle_interrupted_run(self, source, exec_id, original_error):
+    async def handle_interrupted_run(self, source, exec_id, original_error):
         """Logs, original error, attempts to report failed run bizevent"""
         LOG.error("An error occurred during run: %s", str(original_error))
         try:
-            self.report_execution_status("FAILED", source, exec_id, {"message": str(original_error)})
+            await self.report_execution_status("FAILED", source, exec_id, {"message": str(original_error)})
         except RuntimeError as e2:
             LOG.error("Unable to report failed run due to: %s", str(e2))
 

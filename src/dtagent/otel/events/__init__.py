@@ -128,8 +128,10 @@ class AbstractEvents(ABC):
                 task = asyncio.create_task(self._background_sender(sender_id))
                 self._send_tasks.append(task)
         except RuntimeError:
+            from dtagent import LL_TRACE, LOG  # COMPILE_REMOVE
+
             # No running event loop (e.g., in tests), skip starting background tasks
-            pass
+            LOG.debug("No running event loop; skipping background sender tasks startup")
 
     async def _send_async(self, _payload_list: List[Dict[str, Any]], _retries: int = 0) -> Tuple[int, List[Dict[str, Any]]]:
         """Sends given payload to Dynatrace asynchronously
@@ -337,15 +339,16 @@ class AbstractEvents(ABC):
         if current_chunk:
             yield current_chunk
 
-    async def enqueue_events(self, payload: List[Dict[str, Any]]) -> None:
+    def _enqueue_events(self, payload: List[Dict[str, Any]]) -> int:
         """Enqueues events for asynchronous sending.
 
         Args:
             payload (List[Dict[str, Any]]): List of events to enqueue.
         """
         for event in payload:
-            await self.PAYLOAD_QUEUE.put(event)
+            self.PAYLOAD_QUEUE.put_nowait(event)
         self._enqueued_count += len(payload)
+        return len(payload)
 
     async def _background_sender(self, sender_id: int) -> None:
         """Background task that processes the queue and sends chunks.
@@ -362,6 +365,9 @@ class AbstractEvents(ABC):
                 for _ in range(self._max_event_count):
                     try:
                         event = await asyncio.wait_for(self.PAYLOAD_QUEUE.get(), timeout=1.0)
+                        LOG.debug(
+                            "Background sender %d picked event from queue; current queue size: %d", sender_id, self.PAYLOAD_QUEUE.qsize()
+                        )
                         chunk.append(event)
                     except asyncio.TimeoutError:
                         break
@@ -391,49 +397,43 @@ class AbstractEvents(ABC):
             except Exception as e:  # noqa: BLE001,W0718
                 LOG.error("Error in background sender: %s", e)
 
-    def flush_events(self) -> int:
+    async def flush_events(self) -> int:
         """Flush remaining events in the queue and return sent count."""
         from dtagent import LOG, LL_TRACE  # COMPILE_REMOVE
 
-        try:
-            asyncio.get_running_loop()
-            # If loop is running, we can't run another, so just return current count
-            return self._sent_count
-        except RuntimeError:
-            # No loop, run the async flush
-            async def _flush():
-                # If no background tasks are running, process the queue synchronously
-                if not self._send_tasks:
-                    while not self.PAYLOAD_QUEUE.empty():
-                        chunk = []
-                        for _ in range(self._max_event_count):
-                            try:
-                                event = self.PAYLOAD_QUEUE.get_nowait()
-                                chunk.append(event)
-                            except asyncio.QueueEmpty:
-                                break
-                        if chunk:
-                            LOG.log(logging.DEBUG, "Will send %d %s records from synchronous flush", len(chunk), self._api_event_type)
-                            _, failed = await self._send_async(chunk)
-                            LOG.log(
-                                logging.DEBUG,
-                                "Have sent %d %s records from synchronous flush; failed to send %d records",
-                                len(chunk),
-                                self._api_event_type,
-                                len(failed),
-                            )
-                            # Re-enqueue failed events
-                            for event in failed:
-                                await self.PAYLOAD_QUEUE.put(event)
-                else:
-                    # Wait for background tasks to finish
-                    while not self.PAYLOAD_QUEUE.empty():
-                        await asyncio.sleep(0.1)
-                sent = self._sent_count
-                self._sent_count = 0
-                return sent
+        # If no background tasks are running, process the queue directly
+        if not self._send_tasks:
+            while not self.PAYLOAD_QUEUE.empty():
+                chunk = []
+                for _ in range(self._max_event_count):
+                    try:
+                        event = self.PAYLOAD_QUEUE.get_nowait()
+                        chunk.append(event)
+                    except asyncio.QueueEmpty:
+                        break
+                if chunk:
+                    LOG.log(logging.DEBUG, "Will send %d %s records from flush", len(chunk), self._api_event_type)
+                    _, failed = await self._send_async(chunk)
+                    LOG.log(
+                        logging.DEBUG,
+                        "Have sent %d %s records from flush; failed to send %d records",
+                        len(chunk),
+                        self._api_event_type,
+                        len(failed),
+                    )
+                    # Re-enqueue failed events
+                    for event in failed:
+                        await self.PAYLOAD_QUEUE.put(event)
+        else:
+            # Wait for background tasks to finish processing the queue
+            LOG.log(logging.DEBUG, "Waiting for queue to drain, current size: %d", self.PAYLOAD_QUEUE.qsize())
+            while not self.PAYLOAD_QUEUE.empty():
+                await asyncio.sleep(0.1)
+            LOG.log(logging.DEBUG, "Queue drained, sent %d %s records", self._sent_count, self._api_event_type)
 
-            return asyncio.run(_flush())
+        sent = self._sent_count
+        self._sent_count = 0
+        return sent
 
     async def shutdown(self) -> None:
         """Shutdown background tasks."""
@@ -489,6 +489,7 @@ class AbstractEvents(ABC):
         Returns:
             None
         """
+        from dtagent import LOG  # COMPILE_REMOVE
 
         events_data = [
             self._pack_event_data(
@@ -499,12 +500,7 @@ class AbstractEvents(ABC):
             )
             for event_data in events_data
         ]
-        enqueued_events = self.enqueue_events(events_data)
-        try:
-            loop = asyncio.get_running_loop()
-            loop.create_task(enqueued_events)
-        except RuntimeError:
-            asyncio.run(enqueued_events)
+        self._enqueue_events(events_data)
 
     def report_via_api(
         self,

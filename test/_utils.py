@@ -243,6 +243,8 @@ def telemetry_test_sender(
     Returns:
         Tuple[int, int, int, int, int, int]: Count of objects, log lines, metrics, events, bizevents, and davis events sent
     """
+    import asyncio
+
     config._config["otel"]["spans"]["max_export_batch_size"] = 1
     config._config["otel"]["logs"]["max_export_batch_size"] = 1
 
@@ -250,9 +252,8 @@ def telemetry_test_sender(
 
     mock_client = MockTelemetryClient(test_source)
     with mock_client.mock_telemetry_sending():
-        results = sender.send_data(sources)
-        sender._logs.shutdown_logger()
-        sender._spans.shutdown_tracer()
+        results = asyncio.run(sender.send_data(sources))
+        asyncio.run(sender.async_teardown())
     mock_client.store_or_test_results()
 
     return results

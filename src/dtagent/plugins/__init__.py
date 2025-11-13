@@ -395,7 +395,7 @@ class Plugin(ABC):
             EventType.CUSTOM_INFO,
         )
 
-    def _log_entries(  # pylint: disable=R0913
+    async def _log_entries(  # pylint: disable=R0913
         self,
         f_entry_generator: Callable[[Dict, None], None],
         context_name: str,
@@ -552,7 +552,7 @@ class Plugin(ABC):
             if processed_entries_cnt % 100 == 0:  # invoking garbage collection every 100 entries.
                 gc.collect()
 
-        processed_events_cnt += self._events.flush_events()
+        processed_events_cnt += await self._events.flush_events()
         processed_metrics_cnt += self._metrics.flush_metrics()
 
         entries_dict = {"processed_entries_cnt": processed_entries_cnt}
