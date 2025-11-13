@@ -32,6 +32,7 @@ import sys
 import time
 import uuid
 import asyncio
+import logging
 from abc import ABC, abstractmethod
 from types import NoneType
 from typing import Any, Dict, List, Optional, Tuple, Union, Generator
@@ -123,8 +124,8 @@ class AbstractEvents(ABC):
         # Start background senders
         try:
             asyncio.get_running_loop()
-            for _ in range(self._max_concurrent_senders):
-                task = asyncio.create_task(self._background_sender())
+            for sender_id in range(self._max_concurrent_senders):
+                task = asyncio.create_task(self._background_sender(sender_id))
                 self._send_tasks.append(task)
         except RuntimeError:
             # No running event loop (e.g., in tests), skip starting background tasks
@@ -346,12 +347,14 @@ class AbstractEvents(ABC):
             await self.PAYLOAD_QUEUE.put(event)
         self._enqueued_count += len(payload)
 
-    async def _background_sender(self) -> None:
+    async def _background_sender(self, sender_id: int) -> None:
         """Background task that processes the queue and sends chunks.
         The code attempts to accumulate to the maximal size of payload allowed - and
         will flush before we would exceed with new payload increment.
         IMPORTANT: call _flush_events() to flush at the end of processing
         """
+        from dtagent import LOG, LL_TRACE  # COMPILE_REMOVE
+
         while not self._shutdown_event.is_set():
             try:
                 # Collect up to max_event_count events
@@ -364,19 +367,34 @@ class AbstractEvents(ABC):
                         break
                 if chunk:
                     async with self._send_semaphore:
+                        LOG.log(
+                            logging.DEBUG,
+                            "Will send %d %s records from background sender %d",
+                            len(chunk),
+                            self._api_event_type,
+                            sender_id,
+                        )
                         _, failed = await self._send_async(chunk)
+                        LOG.log(
+                            logging.DEBUG,
+                            "Have sent %d %s records from background sender %d; failed to send %d records",
+                            len(chunk),
+                            self._api_event_type,
+                            sender_id,
+                            len(failed),
+                        )
                         # Re-enqueue failed events
                         for event in failed:
                             await self.PAYLOAD_QUEUE.put(event)
             except asyncio.CancelledError:
                 break
             except Exception as e:  # noqa: BLE001,W0718
-                from dtagent import LOG  # COMPILE_REMOVE
-
                 LOG.error("Error in background sender: %s", e)
 
     def flush_events(self) -> int:
         """Flush remaining events in the queue and return sent count."""
+        from dtagent import LOG, LL_TRACE  # COMPILE_REMOVE
+
         try:
             asyncio.get_running_loop()
             # If loop is running, we can't run another, so just return current count
@@ -395,7 +413,15 @@ class AbstractEvents(ABC):
                             except asyncio.QueueEmpty:
                                 break
                         if chunk:
+                            LOG.log(logging.DEBUG, "Will send %d %s records from synchronous flush", len(chunk), self._api_event_type)
                             _, failed = await self._send_async(chunk)
+                            LOG.log(
+                                logging.DEBUG,
+                                "Have sent %d %s records from synchronous flush; failed to send %d records",
+                                len(chunk),
+                                self._api_event_type,
+                                len(failed),
+                            )
                             # Re-enqueue failed events
                             for event in failed:
                                 await self.PAYLOAD_QUEUE.put(event)
