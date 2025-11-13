@@ -165,34 +165,7 @@ class AbstractEvents(ABC):
                 self._api_url,
             )
 
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    self._api_url,
-                    headers=headers,
-                    data=payload,
-                    timeout=aiohttp.ClientTimeout(total=self._api_post_timeout),
-                ) as response:
-                    LOG.log(
-                        LL_TRACE,
-                        "Sent payload with %d %s records; response: %s",
-                        payload_cnt,
-                        self._api_event_type,
-                        response.status,
-                    )
-
-                    if response.status == 202:
-                        events_count = payload_cnt
-                        self._sent_count += payload_cnt
-                        OtelManager.set_current_fail_count(0)
-                    else:
-                        LOG.warning(
-                            "Problem sending %s to Dynatrace; error code: %s, reason: %s, response: %s, payload: %r",
-                            self._api_event_type,
-                            response.status,
-                            response.reason,
-                            await response.text(),
-                            str(_payload_list)[:100],
-                        )
+            response, events_count = await self._post_to_events_api(headers, payload, payload_cnt)
 
         except aiohttp.ClientError as e:
             self._log_send_error(_payload_list, _retries, e)
@@ -202,6 +175,54 @@ class AbstractEvents(ABC):
             )
 
         return events_count, _payload_to_repeat
+
+    async def _post_to_events_api(
+        self, headers: Dict[str, str], payload: str, payload_cnt: int, ok_status: int = 202
+    ) -> Tuple[aiohttp.ClientResponse, int]:
+        """Helper method to post given payload to Dynatrace Events API
+
+        Args:
+            headers (Dict[str, str]): Headers to be used for the request
+            payload (str): Payload to be sent
+            payload_cnt (int): Number of events in the payload
+            ok_status (int, optional): Expected OK status code. Defaults to 202.
+
+        Returns:
+            Tuple[aiohttp.ClientResponse, int]: response object and number of events successfully sent
+        """
+        from dtagent import LL_TRACE, LOG  # COMPILE_REMOVE
+
+        events_count = 0
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                self._api_url,
+                headers=headers,
+                data=payload,
+                timeout=aiohttp.ClientTimeout(total=self._api_post_timeout),
+            ) as response:
+                LOG.log(
+                    LL_TRACE,
+                    "Sent payload with %d %s records; response: %s",
+                    payload_cnt,
+                    self._api_event_type,
+                    response.status,
+                )
+
+                if response.status == ok_status:
+                    events_count = payload_cnt
+                    self._sent_count += payload_cnt
+                    OtelManager.set_current_fail_count(0)
+                else:
+                    LOG.warning(
+                        "Problem sending %s to Dynatrace; error code: %s, reason: %s, response: %s, payload: %r",
+                        self._api_event_type,
+                        response.status,
+                        response.reason,
+                        await response.text(),
+                        payload[:100],
+                    )
+
+        return response, events_count
 
     async def _resend_failed_events(
         self,
@@ -254,8 +275,8 @@ class AbstractEvents(ABC):
         """Helper method to report problems when sending events.
 
         Args:
-            _payload_list (list): event data that was suppose to be sent
-            _retries (int): number of retry attempts
+            payload_list (list): event data that was suppose to be sent
+            retries (int): number of retry attempts
             e (aiohttp.ClientError): error object
         """
         from dtagent import LL_TRACE, LOG  # COMPILE_REMOVE

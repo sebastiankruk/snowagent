@@ -68,6 +68,7 @@ class DavisEvents(GenericEvents):
     def __init__(self, configuration: Configuration):
         """Initializes configuration's resources for events"""
         GenericEvents.__init__(self, configuration, event_type="davis_events")
+        self._sent_count = 0
 
     async def _send_async(self, _payload_list: List[Dict[str, Any]], _retries: int = 0) -> Tuple[int, List[Dict[str, Any]]]:
         """Sends given payload to Dynatrace Events v2 API asynchronously.
@@ -96,28 +97,7 @@ class DavisEvents(GenericEvents):
         for _payload in _payload_list:
             try:
                 payload = json.dumps(_payload)
-                async with aiohttp.ClientSession() as session:
-                    async with session.post(
-                        self._api_url,
-                        headers=headers,
-                        data=payload,
-                        timeout=aiohttp.ClientTimeout(total=self._api_post_timeout),
-                    ) as response:
-                        LOG.log(LL_TRACE, "Sent %d events payload; response: %d", len(_payload), response.status)
-
-                        if response.status == 201:
-                            events_count += 1
-                            self._sent_count += 1
-                            OtelManager.set_current_fail_count(0)
-                        else:
-                            LOG.warning(
-                                "Problem sending %s to Dynatrace; error code: %s, reason: %s, response: %s, payload: %r",
-                                "event",
-                                response.status,
-                                response.reason,
-                                await response.text(),
-                                str(_payload)[:100],
-                            )
+                response, events_count = await self._post_to_events_api(headers, payload, payload_cnt=1, ok_status=201)
 
             except aiohttp.ClientError as e:
                 self._log_send_error(_payload, _retries, e)
