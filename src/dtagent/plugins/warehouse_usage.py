@@ -37,7 +37,7 @@ from dtagent.context import RUN_PLUGIN_KEY, RUN_RESULTS_KEY, RUN_ID_KEY  # COMPI
 class WarehouseUsagePlugin(Plugin):
     """Warehouse usage plugin class."""
 
-    def process(self, run_id: str, run_proc: bool = True) -> Dict[str, Dict[str, int]]:
+    async def process(self, run_id: str, run_proc: bool = True) -> Dict[str, Dict[str, int]]:
         """Processes data for warehouse usage plugin.
 
         Args:
@@ -77,21 +77,21 @@ class WarehouseUsagePlugin(Plugin):
         t_wh_load_hist = "APP.V_WAREHOUSE_LOAD_HISTORY"
         t_wh_metering_hist = "APP.V_WAREHOUSE_METERING_HISTORY"
 
-        entries_wh_events_cnt, logs_wh_events_cnt, metrics_wh_events_cnt, events_wh_events_cnt = self._log_entries(
+        entries_wh_events_cnt, logs_wh_events_cnt, metrics_wh_events_cnt, events_wh_events_cnt = await self._log_entries(
             lambda: self._get_table_rows(t_wh_events),
             "warehouse_usage",
             run_uuid=run_id,
             log_completion=run_proc,
         )
 
-        entries_wh_load_cnt, logs_wh_load_cnt, metrics_wh_load_cnt, events_wh_load_cnt = self._log_entries(
+        entries_wh_load_cnt, logs_wh_load_cnt, metrics_wh_load_cnt, events_wh_load_cnt = await self._log_entries(
             lambda: self._get_table_rows(t_wh_load_hist),
             "warehouse_usage_load",
             run_uuid=run_id,
             log_completion=run_proc,
         )
 
-        entries_wh_metering_cnt, logs_wh_metering_cnt, metrics_wh_metering_cnt, events_wh_metering_cnt = self._log_entries(
+        entries_wh_metering_cnt, logs_wh_metering_cnt, metrics_wh_metering_cnt, events_wh_metering_cnt = await self._log_entries(
             lambda: self._get_table_rows(t_wh_metering_hist),
             "warehouse_usage_metering",
             run_uuid=run_id,

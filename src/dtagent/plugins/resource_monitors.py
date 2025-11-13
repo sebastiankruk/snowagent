@@ -96,7 +96,7 @@ class ResourceMonitorsPlugin(Plugin):
 
         return False
 
-    def process(self, run_id: str, run_proc: bool = True) -> Dict[str, Dict[str, int]]:
+    async def process(self, run_id: str, run_proc: bool = True) -> Dict[str, Dict[str, int]]:
         """Processes the measures on resource monitors.
 
         Args:
@@ -136,7 +136,7 @@ class ResourceMonitorsPlugin(Plugin):
             resource_monitors_logs_cnt,
             resource_monitors_metrics_cnt,
             resource_monitors_events_cnt,
-        ) = self._log_entries(
+        ) = await self._log_entries(
             f_entry_generator=lambda: self._get_table_rows("APP.V_RESOURCE_MONITORS"),
             context_name=context_name,
             run_uuid=run_id,
@@ -158,7 +158,7 @@ class ResourceMonitorsPlugin(Plugin):
             warehouses_logs_cnt,
             warehouses_metrics_cnt,
             warehouses_events_cnt,
-        ) = self._log_entries(
+        ) = await self._log_entries(
             f_entry_generator=lambda: self._get_table_rows("APP.V_WAREHOUSES"),
             context_name=context_name,
             run_uuid=run_id,

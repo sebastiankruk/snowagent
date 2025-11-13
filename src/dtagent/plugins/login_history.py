@@ -55,7 +55,7 @@ class LoginHistoryPlugin(Plugin):
         }
         return EventType.CUSTOM_ALERT, "Failed login attempt", payload
 
-    def process(self, run_id: str, run_proc: bool = True) -> Dict[str, Dict[str, int]]:
+    async def process(self, run_id: str, run_proc: bool = True) -> Dict[str, Dict[str, int]]:
         """Processes the measures on login history.
 
         Args:
@@ -87,7 +87,7 @@ class LoginHistoryPlugin(Plugin):
         t_sessions = "APP.V_SESSIONS"
         t_login_history = "APP.V_LOGIN_HISTORY"
 
-        login_history_entries_cnt, login_history_logs_cnt, login_history_metrics_cnt, login_history_events_cnt = self._log_entries(
+        login_history_entries_cnt, login_history_logs_cnt, login_history_metrics_cnt, login_history_events_cnt = await self._log_entries(
             f_entry_generator=lambda: self._get_table_rows(t_login_history),
             context_name="login_history",
             run_uuid=run_id,
@@ -97,7 +97,7 @@ class LoginHistoryPlugin(Plugin):
             event_payload_prepare=self._prepare_event_payload_failed_login,
         )
 
-        sessions_entries_cnt, session_logs_cnt, session_metrics_cnt, session_events_cnt = self._log_entries(
+        sessions_entries_cnt, session_logs_cnt, session_metrics_cnt, session_events_cnt = await self._log_entries(
             f_entry_generator=lambda: self._get_table_rows(t_sessions),
             context_name="sessions",
             run_uuid=run_id,

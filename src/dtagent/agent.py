@@ -97,7 +97,7 @@ from opentelemetry import version as otel_version
 class DynatraceSnowAgent(AbstractDynatraceSnowAgentConnector):
     """Main DynatraceSnowAgent class managing plugins executions"""
 
-    def process(self, sources: List, run_proc: bool = True) -> Dict[str, Union[Dict[str, int], str]]:
+    async def process(self, sources: List, run_proc: bool = True) -> Dict[str, Union[Dict[str, int], str]]:
         """Starts plugins specified in sources executions
 
         Args:
@@ -142,7 +142,7 @@ class DynatraceSnowAgent(AbstractDynatraceSnowAgentConnector):
             if is_regular_mode(self._session):
                 self._session.query_tag = json.dumps({RUN_VERSION_KEY: str(VERSION), RUN_PLUGIN_KEY: c_source.__name__, RUN_ID_KEY: run_id})
 
-            self.report_execution_status(status="STARTED", task_name=source, exec_id=run_id)
+            await self.report_execution_status(status="STARTED", task_name=source, exec_id=run_id)
 
             plugin_telemetry_allowed = (
                 set(
@@ -158,7 +158,7 @@ class DynatraceSnowAgent(AbstractDynatraceSnowAgentConnector):
                 # running the plugin
                 #
                 try:
-                    results[source] = c_source(
+                    results[source] = await c_source(
                         plugin_name=source,
                         session=self._session,
                         configuration=self._configuration,
@@ -170,11 +170,11 @@ class DynatraceSnowAgent(AbstractDynatraceSnowAgentConnector):
                     ).process(run_id, run_proc)
                     #
 
-                    self.report_execution_status(status="FINISHED", task_name=source, exec_id=run_id, details_dict=results[source])
+                    await self.report_execution_status(status="FINISHED", task_name=source, exec_id=run_id, details_dict=results[source])
                 except RuntimeError as e:
-                    self.handle_interrupted_run(source, run_id, str(e))
+                    await self.handle_interrupted_run(source, run_id, str(e))
             else:
-                self.report_execution_status(status="FAILED", task_name=source, exec_id=run_id)
+                await self.report_execution_status(status="FAILED", task_name=source, exec_id=run_id)
                 results[source] = {"not_implemented": c_source}
                 LOG.warning(f"""Requested measuring source {source} that is not implemented: {results[source]}""")
 
@@ -184,7 +184,7 @@ class DynatraceSnowAgent(AbstractDynatraceSnowAgentConnector):
 async def _async_main(session: snowpark.Session, sources: List) -> dict:
     """Async main logic"""
     agent = DynatraceSnowAgent(session)
-    results = agent.process(sources)
+    results = await agent.process(sources)
     await agent.async_teardown()
     return results
 

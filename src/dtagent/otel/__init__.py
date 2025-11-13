@@ -80,6 +80,10 @@ class NoOpTelemetry:
             """Dummy method that will not do anything and return 0"""
             return 0
 
+        async def __async_int_method(*args, **kwargs):
+            """Dummy async method that will not do anything and return 0"""
+            return 0
+
         def __zero_tuple_method(length):
             def method(*args, **kwargs):
                 """Dummy method that returns a tuple of zeros of specified length"""
@@ -101,22 +105,27 @@ class NoOpTelemetry:
 
             LOG.warning(f"Method '{name}' is not implemented in NoOpTelemetry.")
 
-        if name in ("send_log", "flush_logs", "shutdown_logger", "shutdown_tracer"):
-            return __void_method
+        result = _not_implemented
 
-        if name in ("flush_events", "send_events", "report_via_api", "flush_metrics"):
-            return __int_method
+        if name in ("send_log", "flush_logs", "shutdown_logger", "shutdown_tracer"):
+            result = __void_method
+
+        if name in ("flush_events",):
+            result = __async_int_method
+
+        if name in ("send_events", "report_via_api", "flush_metrics"):
+            result = __int_method
 
         if name in ("flush_traces", "report_via_metrics_api"):
-            return __bool_method
+            result = __bool_method
 
         if name in ("discover_report_metrics"):
-            return __dummy_discover_report_metrics
+            result = __dummy_discover_report_metrics
 
         if name in ("generate_span"):
-            return __zero_tuple_method(3)
+            result = __zero_tuple_method(3)
 
-        return _not_implemented
+        return result
 
 
 NO_OP_TELEMETRY = NoOpTelemetry()

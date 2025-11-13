@@ -97,12 +97,13 @@ class TestDynatraceSnowAgent(DynatraceSnowAgent):
             ["DIRECT_ROLES", "ALL_ROLES", "ALL_PRIVILEGES"],
         )
 
-    def process(
+    async def process(
         self,
         sources: List,
         run_proc: bool = True,
         disabled_telemetry: List[str] = None,
     ) -> Dict:
+        import asyncio
         from dtagent.otel.otel_manager import OtelManager
         from test._mocks.telemetry import MockTelemetryClient
 
@@ -116,13 +117,13 @@ class TestDynatraceSnowAgent(DynatraceSnowAgent):
             with mock_client.mock_telemetry_sending():
                 import time
 
-                process_results = super().process(sources, run_proc)
+                process_results = await super().process(sources, run_proc)
                 self._logs.flush_logs()
                 self._spans.flush_traces()
                 time.sleep(5)
             mock_client.store_or_test_results(disabled_telemetry=disabled_telemetry)
         else:
-            process_results = super().process(sources, run_proc)
+            process_results = await super().process(sources, run_proc)
 
         return process_results
 

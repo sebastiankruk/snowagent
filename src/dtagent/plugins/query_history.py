@@ -45,7 +45,7 @@ from dtagent.context import get_context_name_and_run_id, RUN_PLUGIN_KEY, RUN_RES
 class QueryHistoryPlugin(Plugin):
     """Query history plugin class."""
 
-    def process(self, run_id: str, run_proc: bool = True) -> Dict[str, Dict[str, int]]:
+    async def process(self, run_id: str, run_proc: bool = True) -> Dict[str, Dict[str, int]]:
         """The actual function to process query history:
 
         Args:

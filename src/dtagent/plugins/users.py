@@ -44,7 +44,7 @@ ROLE_REPORTING_MODES_VIEWS = {
 class UsersPlugin(Plugin):
     """Users plugin class."""
 
-    def process(self, run_id: str, run_proc: bool = True) -> Dict[str, Dict[str, int]]:
+    async def process(self, run_id: str, run_proc: bool = True) -> Dict[str, Dict[str, int]]:
         """Processes data for users plugin.
 
         Args:
@@ -90,7 +90,7 @@ class UsersPlugin(Plugin):
         results_dict = {}
 
         for view in views_list:
-            entries_cnt, logs_cnt, metrics_cnt, events_cnt = self._log_entries(
+            entries_cnt, logs_cnt, metrics_cnt, events_cnt = await self._log_entries(
                 lambda view=view: self._get_table_rows(view),
                 "users",
                 run_uuid=run_id,

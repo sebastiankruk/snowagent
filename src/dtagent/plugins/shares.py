@@ -37,7 +37,7 @@ from dtagent.context import RUN_PLUGIN_KEY, RUN_RESULTS_KEY, RUN_ID_KEY  # COMPI
 class SharesPlugin(Plugin):
     """Shares plugin class."""
 
-    def process(self, run_id: str, run_proc: bool = True) -> Dict[str, Dict[str, int]]:
+    async def process(self, run_id: str, run_proc: bool = True) -> Dict[str, Dict[str, int]]:
         """Processes data for shares plugin.
 
         Args:
@@ -86,7 +86,7 @@ class SharesPlugin(Plugin):
             outbound_share_logs_cnt,
             outbound_share_metrics_cnt,
             outbound_share_events_cnt,
-        ) = self._log_entries(
+        ) = await self._log_entries(
             f_entry_generator=lambda: self._get_table_rows(t_outbound_shares),
             context_name="outbound_shares",
             run_uuid=run_id,
@@ -98,7 +98,7 @@ class SharesPlugin(Plugin):
             inbound_share_logs_cnt,
             inbound_share_metrics_cnt,
             inbound_share_events_cnt,
-        ) = self._log_entries(
+        ) = await self._log_entries(
             f_entry_generator=lambda: self._get_table_rows(t_inbound_shares),
             context_name="inbound_shares",
             run_uuid=run_id,
@@ -110,7 +110,7 @@ class SharesPlugin(Plugin):
             shares_logs_cnt,
             shares_metrics_cnt,
             shares_events_cnt,
-        ) = self._log_entries(
+        ) = await self._log_entries(
             f_entry_generator=lambda: self._get_table_rows(t_share_events),
             context_name="shares",
             run_uuid=run_id,

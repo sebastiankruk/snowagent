@@ -55,7 +55,7 @@ class EventUsagePlugin(Plugin):
         )
         return True
 
-    def process(self, run_id: str, run_proc: bool = True) -> Dict[str, Dict[str, int]]:
+    async def process(self, run_id: str, run_proc: bool = True) -> Dict[str, Dict[str, int]]:
         """Processes data for event usage plugin.
 
         Args:
@@ -78,7 +78,7 @@ class EventUsagePlugin(Plugin):
             "dsoa.run.id": "uuid_string"
             }
         """
-        processed_entries_cnt, processed_logs_cnt, processed_event_metrics_cnt, processed_events_cnt = self._log_entries(
+        processed_entries_cnt, processed_logs_cnt, processed_event_metrics_cnt, processed_events_cnt = await self._log_entries(
             f_entry_generator=lambda: self._get_table_rows("APP.V_EVENT_USAGE_HISTORY"),
             context_name="event_usage",
             run_uuid=run_id,

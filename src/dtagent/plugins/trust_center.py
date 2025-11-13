@@ -73,7 +73,7 @@ class TrustCenterPlugin(Plugin):
 
         return EventType.CUSTOM_ALERT, "Trust Center Critical problem", {}
 
-    def process(self, run_id: str, run_proc: bool = True) -> Dict[str, Dict[str, int]]:
+    async def process(self, run_id: str, run_proc: bool = True) -> Dict[str, Dict[str, int]]:
         """Processes data for trust center plugin.
 
         Args:
@@ -97,7 +97,7 @@ class TrustCenterPlugin(Plugin):
             }
         """
 
-        metric_entries_cnt, _, metrics_sent_cnt, _ = self._log_entries(
+        metric_entries_cnt, _, metrics_sent_cnt, _ = await self._log_entries(
             f_entry_generator=lambda: self._get_table_rows("APP.V_TRUST_CENTER_METRICS"),
             context_name="trust_center",
             run_uuid=run_id,
@@ -107,7 +107,7 @@ class TrustCenterPlugin(Plugin):
             report_timestamp_events=False,
         )
 
-        entries_cnt, logs_cnt, _, events_sent_cnt = self._log_entries(
+        entries_cnt, logs_cnt, _, events_sent_cnt = await self._log_entries(
             f_entry_generator=lambda: self._get_table_rows("APP.V_TRUST_CENTER_INSTRUMENTED"),
             context_name="trust_center",
             run_uuid=run_id,

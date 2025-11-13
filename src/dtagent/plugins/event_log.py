@@ -74,14 +74,14 @@ class EventLogPlugin(Plugin):
 
         return True
 
-    def _process_log_entries(self, run_id: str, run_proc: bool = True) -> Tuple[int, int, int, int]:
+    async def _process_log_entries(self, run_id: str, run_proc: bool = True) -> Tuple[int, int, int, int]:
         """Processing entries that are not metrics
 
         Returns:
             Tuple[int, int, int, int]: number of processed entries, logs, metrics, events
         """
 
-        entries_cnt, logs_cnt, metrics_cnt, events_cnt = self._log_entries(
+        entries_cnt, logs_cnt, metrics_cnt, events_cnt = await self._log_entries(
             f_entry_generator=self._get_events,
             context_name="event_log",
             run_uuid=run_id,
@@ -93,11 +93,11 @@ class EventLogPlugin(Plugin):
 
         return entries_cnt, logs_cnt, metrics_cnt, events_cnt
 
-    def _process_metric_entries(self, run_id: str, run_proc: bool = True) -> Tuple[int, int, int, int]:
+    async def _process_metric_entries(self, run_id: str, run_proc: bool = True) -> Tuple[int, int, int, int]:
         """Processes metric entries for event log"""
 
         t_event_log_metrics_instrumented = "APP.V_EVENT_LOG_METRICS_INSTRUMENTED"
-        (metric_entries_cnt, metric_logs_cnt, metric_metrics_cnt, metric_event_cnt) = self._log_entries(
+        (metric_entries_cnt, metric_logs_cnt, metric_metrics_cnt, metric_event_cnt) = await self._log_entries(
             lambda: self._get_table_rows(t_event_log_metrics_instrumented),
             context_name="event_log_metrics",
             run_uuid=run_id,
@@ -143,7 +143,7 @@ class EventLogPlugin(Plugin):
             metrics_sent,
         )
 
-    def process(self, run_id: str, run_proc: bool = True) -> Dict[str, Dict[str, int]]:
+    async def process(self, run_id: str, run_proc: bool = True) -> Dict[str, Dict[str, int]]:
         """Analyzes changes in the event log
 
         Args:
@@ -188,8 +188,8 @@ class EventLogPlugin(Plugin):
             s_logs_sent,
             s_metrics_sent,
         ) = self._process_span_entries(run_id, run_proc)
-        m_entries_cnt, m_logs_cnt, m_metrics_cnt, m_event_cnt = self._process_metric_entries(run_id, run_proc)
-        l_entries_cnt, l_logs_cnt, l_metrics_cnt, l_events_cnt = self._process_log_entries(run_id, run_proc)
+        m_entries_cnt, m_logs_cnt, m_metrics_cnt, m_event_cnt = await self._process_metric_entries(run_id, run_proc)
+        l_entries_cnt, l_logs_cnt, l_metrics_cnt, l_events_cnt = await self._process_log_entries(run_id, run_proc)
 
         return {
             RUN_PLUGIN_KEY: "event_log",

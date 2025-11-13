@@ -570,7 +570,7 @@ class Plugin(ABC):
         return processed_entries_cnt, processed_logs_cnt, processed_metrics_cnt, processed_events_cnt
 
     @abstractmethod
-    def process(self, run_id: str, run_proc: bool = True) -> Dict[str, Dict[str, int]]:
+    async def process(self, run_id: str, run_proc: bool = True) -> Dict[str, Dict[str, int]]:
         """Abstract method for plugin processing.
 
         Args:

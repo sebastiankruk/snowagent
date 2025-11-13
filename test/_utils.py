@@ -25,6 +25,7 @@ import os
 import sys
 import uuid
 import datetime
+import asyncio
 from typing import Any, Generator, Dict, List, Optional, Callable, Tuple
 import logging
 import json
@@ -94,7 +95,7 @@ def _logging_findings(
 
         print(LOG.getEffectiveLevel())
 
-    results = dtagent.process([str(log_tag)], False, disabled_telemetry=disabled_telemetry)
+    results = asyncio.run(dtagent.process([str(log_tag)], False, disabled_telemetry=disabled_telemetry))
     dtagent.teardown()
     session.close()
 
@@ -243,8 +244,6 @@ def telemetry_test_sender(
     Returns:
         Tuple[int, int, int, int, int, int]: Count of objects, log lines, metrics, events, bizevents, and davis events sent
     """
-    import asyncio
-
     config._config["otel"]["spans"]["max_export_batch_size"] = 1
     config._config["otel"]["logs"]["max_export_batch_size"] = 1
 

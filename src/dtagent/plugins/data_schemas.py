@@ -96,7 +96,7 @@ class DataSchemasPlugin(Plugin):
             context=context,
         )
 
-    def process(self, run_id: str, run_proc: bool = True) -> Dict[str, Dict[str, int]]:
+    async def process(self, run_id: str, run_proc: bool = True) -> Dict[str, Dict[str, int]]:
         """Processes data for data schemas plugin.
 
         Args:
@@ -120,7 +120,7 @@ class DataSchemasPlugin(Plugin):
             }
         """
 
-        entries_cnt, logs_cnt, metrics_cnt, events_cnt = self._log_entries(
+        entries_cnt, logs_cnt, metrics_cnt, events_cnt = await self._log_entries(
             f_entry_generator=lambda: self._get_table_rows("APP.V_DATA_SCHEMAS"),
             context_name="data_schemas",
             run_uuid=run_id,

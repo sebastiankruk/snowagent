@@ -36,7 +36,7 @@ from dtagent.context import RUN_PLUGIN_KEY, RUN_RESULTS_KEY, RUN_ID_KEY  # COMPI
 class ActiveQueriesPlugin(Plugin):
     """Active queries plugin class."""
 
-    def process(self, run_id: str, run_proc: bool = True) -> Dict[str, Dict[str, int]]:
+    async def process(self, run_id: str, run_proc: bool = True) -> Dict[str, Dict[str, int]]:
         """Processes the measures on active queries
 
         Args:
@@ -62,7 +62,7 @@ class ActiveQueriesPlugin(Plugin):
         """
         t_active_queries = "SELECT * FROM TABLE(DTAGENT_DB.APP.F_ACTIVE_QUERIES_INSTRUMENTED())"
 
-        entries_cnt, logs_cnt, metrics_cnt, events_cnt = self._log_entries(
+        entries_cnt, logs_cnt, metrics_cnt, events_cnt = await self._log_entries(
             lambda: self._get_table_rows(t_active_queries),
             "active_queries",
             run_uuid=run_id,

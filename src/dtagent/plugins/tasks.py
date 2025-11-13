@@ -37,7 +37,7 @@ from dtagent.context import RUN_PLUGIN_KEY, RUN_RESULTS_KEY, RUN_ID_KEY  # COMPI
 class TasksPlugin(Plugin):
     """Tasks plugin class."""
 
-    def process(self, run_id: str, run_proc: bool = True) -> Dict[str, Dict[str, int]]:
+    async def process(self, run_id: str, run_proc: bool = True) -> Dict[str, Dict[str, int]]:
         """Processes the measures on serverless tasks, task history and task versions.
 
         Args:
@@ -82,7 +82,7 @@ class TasksPlugin(Plugin):
             serverless_task_logs_cnt,
             serverless_tasks_metrics_cnt,
             serverless_tasks_events_cnt,
-        ) = self._log_entries(
+        ) = await self._log_entries(
             lambda: self._get_table_rows(t_serverless_task),
             "serverless_tasks",
             run_uuid=run_id,
@@ -95,7 +95,7 @@ class TasksPlugin(Plugin):
             task_versions_logs_cnt,
             task_versions_metrics_cnt,
             task_versions_events_cnt,
-        ) = self._log_entries(
+        ) = await self._log_entries(
             lambda: self._get_table_rows(t_task_versions),
             "task_versions",
             run_uuid=run_id,
@@ -107,7 +107,7 @@ class TasksPlugin(Plugin):
             task_history_logs_cnt,
             task_history_metrics_cnt,
             task_history_events_cnt,
-        ) = self._log_entries(
+        ) = await self._log_entries(
             lambda: self._get_table_rows(t_task_hist),
             "task_history",
             run_uuid=run_id,

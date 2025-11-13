@@ -37,7 +37,7 @@ from dtagent.context import RUN_PLUGIN_KEY, RUN_RESULTS_KEY, RUN_ID_KEY  # COMPI
 class DataVolumePlugin(Plugin):
     """Data volume plugin class."""
 
-    def process(self, run_id: str, run_proc: bool = True) -> Dict[str, Dict[str, int]]:
+    async def process(self, run_id: str, run_proc: bool = True) -> Dict[str, Dict[str, int]]:
         """Processes the measures on data volume
 
         Args:
@@ -60,7 +60,7 @@ class DataVolumePlugin(Plugin):
             "dsoa.run.id": "uuid_string"
             }
         """
-        entries_cnt, logs_cnt, metrics_cnt, events_cnt = self._log_entries(
+        entries_cnt, logs_cnt, metrics_cnt, events_cnt = await self._log_entries(
             f_entry_generator=lambda: self._get_table_rows("APP.V_DATA_VOLUME"),
             context_name="data_volume",
             run_uuid=run_id,

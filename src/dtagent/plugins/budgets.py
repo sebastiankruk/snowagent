@@ -37,7 +37,7 @@ from dtagent.context import RUN_PLUGIN_KEY, RUN_RESULTS_KEY, RUN_ID_KEY  # COMPI
 class BudgetsPlugin(Plugin):
     """Budgets plugin class."""
 
-    def process(self, run_id: str, run_proc: bool = True) -> Dict[str, Dict[str, int]]:
+    async def process(self, run_id: str, run_proc: bool = True) -> Dict[str, Dict[str, int]]:
         """Processes data for budgets plugin.
 
         Args:
@@ -79,7 +79,7 @@ class BudgetsPlugin(Plugin):
             # this procedure ensures that the budgets and spendings tables are up to date
             self._session.call(p_refresh_budgets)
 
-        budgets_cnt, logs_budgets_cnt, budgets_metrics_cnt, budgets_events_cnt = self._log_entries(
+        budgets_cnt, logs_budgets_cnt, budgets_metrics_cnt, budgets_events_cnt = await self._log_entries(
             lambda: self._get_table_rows(t_get_budgets),
             "budgets",
             run_uuid=run_id,
@@ -87,7 +87,7 @@ class BudgetsPlugin(Plugin):
             log_completion=False,
         )
 
-        spendings_cnt, logs_spendings_cnt, spending_metrics_cnt, spending_events_cnt = self._log_entries(
+        spendings_cnt, logs_spendings_cnt, spending_metrics_cnt, spending_events_cnt = await self._log_entries(
             lambda: self._get_table_rows(t_budget_spending),
             "budgets",
             run_uuid=run_id,
