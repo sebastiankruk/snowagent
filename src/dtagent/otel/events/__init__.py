@@ -27,6 +27,7 @@
 
 from calendar import c
 import json
+from multiprocessing.connection import Client
 import sys
 import time
 import uuid
@@ -194,47 +195,89 @@ class AbstractEvents(ABC):
                         )
 
         except aiohttp.ClientError as e:
-            if isinstance(e, asyncio.TimeoutError):
-                LOG.error(
-                    "The request to send %d bytes payload with %d %s records timed out after %d seconds. (retry = %d)",
-                    sys.getsizeof(_payload_list),
-                    len(_payload_list),
-                    self._api_event_type,
-                    self._api_post_timeout,
-                    _retries,
-                )
-            else:
-                LOG.error(
-                    "An error occurred when sending %d bytes payload with %d %s records (retry = %d): %s",
-                    sys.getsizeof(_payload_list),
-                    len(_payload_list),
-                    self._api_event_type,
-                    _retries,
-                    e,
-                )
+            self._log_send_error(_payload_list, _retries, e)
         finally:
-            if response is not None and response.status in self._ingest_retry_statuses:
-                if _retries < self._max_retries:
+            events_count, _payload_to_repeat = await self._resend_failed_events(
+                _payload_list, events_count, _retries, response, self._ingest_retry_statuses
+            )
+
+        return events_count, _payload_to_repeat
+
+    async def _resend_failed_events(
+        self,
+        events_count: int,
+        payload_list: List[Dict[str, Any]],
+        retries: int,
+        response: aiohttp.ClientResponse,
+        ingest_retry_statuses: List[int] = None,
+    ) -> Tuple[int, List[Dict[str, Any]]]:
+        """Will attempt to re-send events that we failed to be sent recently
+
+        Args:
+            events_count (int): number of events successfully sent so far
+            payload_list (List[Dict[str, Any]]): List of events that were attempted to be sent
+            retries (int): number of retry attempts
+            response (aiohttp.ClientResponse): response object from the last send attempt
+
+        Returns:
+            Tuple[int, List[Dict[str, Any]]]:
+                int: number of events that we managed to send
+                List[Dict[str, Any]]: list of events that we failed to send and we need to resend
+        """
+        from dtagent import LL_TRACE, LOG  # COMPILE_REMOVE
+
+        _payload_to_repeat = []
+        if response is not None:
+            if ingest_retry_statuses is None or response.status in ingest_retry_statuses:
+                if retries < self._max_retries:
                     await asyncio.sleep(self._retry_delay_ms / 1000)
-                    repeated_events_send, _payload_to_repeat = await self._send_async(_payload_list, _retries + 1)
+                    repeated_events_send, _payload_to_repeat = await self._send_async(payload_list, retries + 1)
                     events_count += repeated_events_send
                 else:
                     LOG.warning(
                         "Failed to send all %s data with %d (max=%d) attempts; last status code = %s",
                         self._api_event_type,
-                        _retries,
+                        retries,
                         self._max_retries,
                         response.status,
                     )
-                    _payload_to_repeat = _payload_list
+                    _payload_to_repeat = payload_list
                     OtelManager.increase_current_fail_count(response)
-
-            elif response is not None and response.status >= 300:
+            elif response.status >= 300:
                 OtelManager.increase_current_fail_count(response)
 
-            OtelManager.verify_communication()
+        OtelManager.verify_communication()
 
         return events_count, _payload_to_repeat
+
+    def _log_send_error(self, payload_list: Union[Dict[str, Any], List[Dict[str, Any]]], retries: int, e: aiohttp.ClientError):
+        """Helper method to report problems when sending events.
+
+        Args:
+            _payload_list (list): event data that was suppose to be sent
+            _retries (int): number of retry attempts
+            e (aiohttp.ClientError): error object
+        """
+        from dtagent import LL_TRACE, LOG  # COMPILE_REMOVE
+
+        if isinstance(e, asyncio.TimeoutError):
+            LOG.error(
+                "The request to send %d bytes payload with %d %s records timed out after %d seconds. (retry = %d)",
+                sys.getsizeof(payload_list),
+                len(payload_list),
+                self._api_event_type,
+                self._api_post_timeout,
+                retries,
+            )
+        else:
+            LOG.error(
+                "An error occurred when sending %d bytes payload with %d %s records (retry = %d): %s",
+                sys.getsizeof(payload_list),
+                len(payload_list),
+                self._api_event_type,
+                retries,
+                e,
+            )
 
     def _split_payload(self, payload: List[Dict[str, Any]]) -> Generator[List[Dict[str, Any]], None, None]:
         """Enables to iterate over "ingestible" chunks of events payload

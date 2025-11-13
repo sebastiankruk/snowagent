@@ -29,6 +29,8 @@ import json
 import sys
 import time
 import uuid
+import asyncio
+import aiohttp
 from abc import ABC, abstractmethod
 from types import NoneType
 from typing import Any, Dict, List, Optional, Tuple, Union, Generator
@@ -67,9 +69,9 @@ class DavisEvents(GenericEvents):
         """Initializes configuration's resources for events"""
         GenericEvents.__init__(self, configuration, event_type="davis_events")
 
-    def _send(self, _payload_list: List[Dict[str, Any]], _retries: int = 0) -> Tuple[int, List[Dict[str, Any]]]:
-        """Sends given payload to Dynatrace Events v2 API.
-        Overrides GenericEvents.__send() as Events v2 API does not support sending multiple events at the same time,
+    async def _send_async(self, _payload_list: List[Dict[str, Any]], _retries: int = 0) -> Tuple[int, List[Dict[str, Any]]]:
+        """Sends given payload to Dynatrace Events v2 API asynchronously.
+        Overrides GenericEvents.__send_async() as Events v2 API does not support sending multiple events at the same time,
         as a bulk, like in BizEvents or OpenPipelineEvents.
 
         Args:
@@ -87,56 +89,46 @@ class DavisEvents(GenericEvents):
             "Content-Type": "application/json",
         } | OtelManager.get_dsoa_headers()
 
+        response = None
+        events_count = 0
         _payload_to_repeat = []  # we will keep events that failed to be delivered
-        events_send = 0
 
         for _payload in _payload_list:
             try:
                 payload = json.dumps(_payload)
-                response = requests.post(
-                    self._api_url,
-                    headers=headers,
-                    data=payload,
-                    timeout=30,
-                )
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(
+                        self._api_url,
+                        headers=headers,
+                        data=payload,
+                        timeout=aiohttp.ClientTimeout(total=self._api_post_timeout),
+                    ) as response:
+                        LOG.log(LL_TRACE, "Sent %d events payload; response: %d", len(_payload), response.status)
 
-                LOG.log(LL_TRACE, "Sent %d events payload; response: %d", len(_payload), response.status_code)
+                        if response.status == 201:
+                            events_count += 1
+                            self._sent_count += 1
+                            OtelManager.set_current_fail_count(0)
+                        else:
+                            LOG.warning(
+                                "Problem sending %s to Dynatrace; error code: %s, reason: %s, response: %s, payload: %r",
+                                "event",
+                                response.status,
+                                response.reason,
+                                await response.text(),
+                                str(_payload)[:100],
+                            )
 
-                if response.status_code == 201:
-                    events_send += 1
-                    OtelManager.set_current_fail_count(0)
-                else:
-                    _log_warning(response, _payload, "event")
-
-            except requests.exceptions.RequestException as e:
-                if isinstance(e, requests.exceptions.Timeout):
-                    LOG.error(
-                        "The request to send %d bytes with events timed out after 5 minutes. (retry = %d)",
-                        len(_payload),
-                        _retries,
-                    )
-                else:
-                    LOG.error(
-                        "An error occurred when sending %d bytes with events (retry = %d): %s",
-                        len(_payload),
-                        _retries,
-                        e,
-                    )
-
+            except aiohttp.ClientError as e:
+                self._log_send_error(_payload, _retries, e)
                 _payload_to_repeat.append(_payload)
 
         if _payload_to_repeat:
-            if _retries < self._max_retries:
-                time.sleep(self._retry_delay_ms / 1000)
-                repeated_events_send, _payload_to_repeat = self._send(_payload_to_repeat, _retries + 1)
-                events_send += repeated_events_send
-            else:
-                __message = f"Failed to send all data within {self._max_retries} attempts"
-                LOG.warning(__message)
-                OtelManager.increase_current_fail_count(response)
-                OtelManager.verify_communication()
+            events_count, _payload_to_repeat = await self._resend_failed_events(
+                _payload_to_repeat, events_count, _retries, response, self._ingest_retry_statuses
+            )
 
-        return events_send, _payload_to_repeat
+        return events_count, _payload_to_repeat
 
     def _add_data_to_payload(self, payload: Dict[str, Any], event_data: Dict[str, Any]) -> Dict[str, Any]:
         """Adds given properties to event payload under 'properties' key
