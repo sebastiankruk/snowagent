@@ -181,10 +181,14 @@ class DynatraceSnowAgent(AbstractDynatraceSnowAgentConnector):
         return results
 
 
-def main(session: snowpark.Session, sources: List) -> dict:
-    """MAIN entry to this stored procedure - this is where the fun begins"""
+async def _async_main(session: snowpark.Session, sources: List) -> dict:
+    """Async main logic"""
     agent = DynatraceSnowAgent(session)
     results = agent.process(sources)
-    agent.teardown()
-
+    await agent.async_teardown()
     return results
+
+
+def main(session: snowpark.Session, sources: List) -> dict:
+    """MAIN entry to this stored procedure - this is where the fun begins"""
+    return asyncio.run(_async_main(session, sources))

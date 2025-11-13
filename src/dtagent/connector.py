@@ -318,8 +318,8 @@ class TelemetrySender(AbstractDynatraceSnowAgentConnector, Plugin):
         return exec_results
 
 
-def main(session: snowpark.Session, source: Union[str, dict, list], params: dict) -> str:
-    """MAIN entry to this stored procedure - this is where the fun begins"""
+async def _async_main(session: snowpark.Session, source: Union[str, dict, list], params: dict) -> str:
+    """Async main logic"""
     exec_id = str(uuid.uuid4().hex)
     sender = TelemetrySender(session, params, exec_id)
     try:
@@ -327,6 +327,11 @@ def main(session: snowpark.Session, source: Union[str, dict, list], params: dict
     except RuntimeError as e:
         sender.handle_interrupted_run(source, exec_id, str(e))
 
-    sender.teardown()
+    await sender.async_teardown()
 
     return results
+
+
+def main(session: snowpark.Session, source: Union[str, dict, list], params: dict) -> str:
+    """MAIN entry to this stored procedure - this is where the fun begins"""
+    return asyncio.run(_async_main(session, source, params))

@@ -187,3 +187,10 @@ class AbstractDynatraceSnowAgentConnector:
 
         if is_regular_mode(self._session):
             self._session.query_tag = None
+
+    async def async_teardown(self) -> None:
+        """Async teardown, shutting down async components"""
+        await self._biz_events.shutdown()
+        await self._events.shutdown()
+        await self._davis_events.shutdown()
+        self.teardown()
