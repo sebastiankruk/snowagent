@@ -138,50 +138,5 @@ class GenericEvents(AbstractEvents):
 
         return event_payload
 
-    def send_events(
-        self,
-        events_data: List[Dict[str, Any]],
-        event_type: Optional[Union[str, EventType]] = EventType.CUSTOM_ALERT,
-        context: Optional[Dict[str, Any]] = None,
-        **kwargs,
-    ) -> None:
-        """Sends given list of events to Dynatrace via the generic OpenPipeline API.
-
-        Args:
-            events_data (List):                                     List of events data, each in form of dict
-            event_type (Optional[Union[str, EventType]], optional): Event type to report under. Defaults to None.
-            context (Dict, optional):                               Additional information that should be appended to event data based on
-                                                                    agent execution context. Defaults to None.
-            **kwargs:                                               Additional keyword arguments to be processed by child classes:
-                additional_payload (Dict, optional):                    Additional lines of payload,
-                title (str, optional):                                  Event title,
-                start_time_key (str, optional):                         Key in event_data dict to be used as event start time,
-                end_time_key (str, optional):                           Key in event_data dict to be used as event end time,
-                timeout (int, optional):                                Timeout for sending events,
-
-        Returns:
-            None
-        """
-
-        generic_events = [
-            self._pack_event_data(
-                event_type=event_type,
-                event_data=event_data,
-                context=context,
-                **kwargs,
-            )
-            for event_data in events_data
-        ]
-
-        try:
-            import asyncio
-
-            loop = asyncio.get_running_loop()
-            loop.create_task(self.enqueue_events(generic_events))
-        except RuntimeError:
-            import asyncio
-
-            asyncio.run(self.enqueue_events(generic_events))
-
 
 ##endregion

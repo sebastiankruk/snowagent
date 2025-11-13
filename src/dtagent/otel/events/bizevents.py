@@ -123,22 +123,6 @@ class BizEvents(AbstractEvents):
         """
         from dtagent.util import get_now_timestamp_formatted  # COMPILE_REMOVE
 
-        cloud_events = [
-            self._pack_event_data(
-                event_type=event_type,
-                event_data=event_data,
-                context=context,
-                formatted_time=get_now_timestamp_formatted(),
-            )
-            for event_data in events_data
-        ]
-
-        try:
-            import asyncio
-
-            loop = asyncio.get_running_loop()
-            loop.create_task(self.enqueue_events(cloud_events))
-        except RuntimeError:
-            import asyncio
-
-            asyncio.run(self.enqueue_events(cloud_events))
+        AbstractEvents.send_events(
+            self, events_data, event_type=event_type, context=context, formatted_time=get_now_timestamp_formatted(), **kwargs
+        )
