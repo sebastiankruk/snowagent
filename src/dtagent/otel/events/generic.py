@@ -144,7 +144,7 @@ class GenericEvents(AbstractEvents):
         event_type: Optional[Union[str, EventType]] = EventType.CUSTOM_ALERT,
         context: Optional[Dict[str, Any]] = None,
         **kwargs,
-    ) -> int:
+    ) -> None:
         """Sends given list of events to Dynatrace via the generic OpenPipeline API.
 
         Args:
@@ -160,7 +160,7 @@ class GenericEvents(AbstractEvents):
                 timeout (int, optional):                                Timeout for sending events,
 
         Returns:
-            int: Count of all events that went through (or were scheduled successfully); -1 indicates a problem
+            None
         """
 
         generic_events = [
@@ -173,7 +173,15 @@ class GenericEvents(AbstractEvents):
             for event_data in events_data
         ]
 
-        return self._send_events(generic_events)
+        try:
+            import asyncio
+
+            loop = asyncio.get_running_loop()
+            loop.create_task(self.enqueue_events(generic_events))
+        except RuntimeError:
+            import asyncio
+
+            asyncio.run(self.enqueue_events(generic_events))
 
 
 ##endregion

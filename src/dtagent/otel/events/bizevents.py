@@ -111,7 +111,7 @@ class BizEvents(AbstractEvents):
         event_type: Optional[Union[str, EventType]] = "dsoa.bizevent",
         context: Optional[Dict[str, Any]] = None,
         **kwargs
-    ) -> int:
+    ) -> None:
         """Sends give list of events (in dict form) as CloudEvents to Dynatrace BizEvents endpoint
 
         Args:
@@ -119,7 +119,7 @@ class BizEvents(AbstractEvents):
             context (Dict, optional): Additional information that should be appended to event data. Defaults to None.
 
         Returns:
-            int: Count of all events that went through (or were scheduled successfully); -1 indicates a problem
+            None
         """
         from dtagent.util import get_now_timestamp_formatted  # COMPILE_REMOVE
 
@@ -133,4 +133,12 @@ class BizEvents(AbstractEvents):
             for event_data in events_data
         ]
 
-        return self._send_events(cloud_events)
+        try:
+            import asyncio
+
+            loop = asyncio.get_running_loop()
+            loop.create_task(self.enqueue_events(cloud_events))
+        except RuntimeError:
+            import asyncio
+
+            asyncio.run(self.enqueue_events(cloud_events))

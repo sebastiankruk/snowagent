@@ -30,10 +30,12 @@ import json
 import sys
 import time
 import uuid
+import asyncio
 from abc import ABC, abstractmethod
 from types import NoneType
 from typing import Any, Dict, List, Optional, Tuple, Union, Generator
 
+import aiohttp
 import requests
 
 from dtagent.context import RUN_CONTEXT_KEY
@@ -83,7 +85,12 @@ class AbstractEvents(ABC):
         """
         _default_params = default_params or {}
 
-        self.PAYLOAD_CACHE: List[Dict[str, Any]] = []
+        self.PAYLOAD_QUEUE: asyncio.Queue[Dict[str, Any]] = asyncio.Queue()
+        self._send_semaphore = asyncio.Semaphore(_default_params.get("max_concurrent_senders", 5))
+        self._send_tasks: List[asyncio.Task] = []
+        self._shutdown_event = asyncio.Event()
+        self._enqueued_count = 0
+        self._sent_count = 0
         self._configuration = configuration
         self._resource_attributes = self._configuration.get("resource.attributes")
         self._max_payload_bytes = self._configuration.get(
@@ -108,8 +115,18 @@ class AbstractEvents(ABC):
             otel_module=event_type, key="api_post_timeout", default_value=_default_params.get("api_post_timeout", 30)
         )
 
-    def _send(self, _payload_list: List[Dict[str, Any]], _retries: int = 0) -> Tuple[int, List[Dict[str, Any]]]:
-        """Sends given payload to Dynatrace
+        # Start background senders
+        try:
+            asyncio.get_running_loop()
+            for _ in range(_default_params.get("max_concurrent_senders", 5)):
+                task = asyncio.create_task(self._background_sender())
+                self._send_tasks.append(task)
+        except RuntimeError:
+            # No running event loop (e.g., in tests), skip starting background tasks
+            pass
+
+    async def _send_async(self, _payload_list: List[Dict[str, Any]], _retries: int = 0) -> Tuple[int, List[Dict[str, Any]]]:
+        """Sends given payload to Dynatrace asynchronously
 
         Args:
             _payload_list (List[Dict[str, Any]]): List of events to be sent
@@ -147,34 +164,43 @@ class AbstractEvents(ABC):
                 self._api_url,
             )
 
-            response = requests.post(
-                self._api_url,
-                headers=headers,
-                data=payload,
-                timeout=self._api_post_timeout,
-            )
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    self._api_url,
+                    headers=headers,
+                    data=payload,
+                    timeout=aiohttp.ClientTimeout(total=self._api_post_timeout),
+                ) as response:
+                    LOG.log(
+                        LL_TRACE,
+                        "Sent payload with %d %s records; response: %s",
+                        payload_cnt,
+                        self._api_event_type,
+                        response.status,
+                    )
 
-            LOG.log(
-                LL_TRACE,
-                "Sent payload with %d %s records; response: %s",
-                payload_cnt,
-                self._api_event_type,
-                response.status_code,
-            )
+                    if response.status == 202:
+                        events_count = payload_cnt
+                        self._sent_count += payload_cnt
+                        OtelManager.set_current_fail_count(0)
+                    else:
+                        LOG.warning(
+                            "Problem sending %s to Dynatrace; error code: %s, reason: %s, response: %s, payload: %r",
+                            self._api_event_type,
+                            response.status,
+                            response.reason,
+                            await response.text(),
+                            str(_payload_list)[:100],
+                        )
 
-            if response.status_code == 202:
-                events_count = payload_cnt
-                OtelManager.set_current_fail_count(0)
-            else:
-                _log_warning(response, _payload_list, self._api_event_type)
-
-        except requests.exceptions.RequestException as e:
-            if isinstance(e, requests.exceptions.Timeout):
+        except aiohttp.ClientError as e:
+            if isinstance(e, asyncio.TimeoutError):
                 LOG.error(
-                    "The request to send %d bytes payload with %d %s records timed out after 5 minutes. (retry = %d)",
+                    "The request to send %d bytes payload with %d %s records timed out after %d seconds. (retry = %d)",
                     sys.getsizeof(_payload_list),
                     len(_payload_list),
                     self._api_event_type,
+                    self._api_post_timeout,
                     _retries,
                 )
             else:
@@ -187,10 +213,10 @@ class AbstractEvents(ABC):
                     e,
                 )
         finally:
-            if response is not None and response.status_code in self._ingest_retry_statuses:
+            if response is not None and response.status in self._ingest_retry_statuses:
                 if _retries < self._max_retries:
-                    time.sleep(self._retry_delay_ms / 1000)
-                    repeated_events_send, _payload_to_repeat = self._send(_payload_list, _retries + 1)
+                    await asyncio.sleep(self._retry_delay_ms / 1000)
+                    repeated_events_send, _payload_to_repeat = await self._send_async(_payload_list, _retries + 1)
                     events_count += repeated_events_send
                 else:
                     LOG.warning(
@@ -198,12 +224,12 @@ class AbstractEvents(ABC):
                         self._api_event_type,
                         _retries,
                         self._max_retries,
-                        response.status_code,
+                        response.status,
                     )
                     _payload_to_repeat = _payload_list
                     OtelManager.increase_current_fail_count(response)
 
-            elif response is not None and response.status_code >= 300:
+            elif response is not None and response.status >= 300:
                 OtelManager.increase_current_fail_count(response)
 
             OtelManager.verify_communication()
@@ -242,38 +268,92 @@ class AbstractEvents(ABC):
         if current_chunk:
             yield current_chunk
 
-    def _send_events(self, payload: Optional[List[Dict[str, Any]]] = None) -> int:
-        """Sends given payload of events to Dynatrace via the chosen API.
+    async def enqueue_events(self, payload: List[Dict[str, Any]]) -> None:
+        """Enqueues events for asynchronous sending.
+
+        Args:
+            payload (List[Dict[str, Any]]): List of events to enqueue.
+        """
+        for event in payload:
+            await self.PAYLOAD_QUEUE.put(event)
+        self._enqueued_count += len(payload)
+
+    async def _background_sender(self) -> None:
+        """Background task that processes the queue and sends chunks.
         The code attempts to accumulate to the maximal size of payload allowed - and
         will flush before we would exceed with new payload increment.
         IMPORTANT: call _flush_events() to flush at the end of processing
-
-        Args:
-            payload (List, optional): List of one or multiple dictionaries to be send as events. Defaults to None.
-
-        Returns:
-            int: Number of events that were sent without issues; -1 if there were any issues
         """
-        from dtagent import LL_TRACE, LOG  # COMPILE_REMOVE
+        while not self._shutdown_event.is_set():
+            try:
+                # Collect up to max_event_count events
+                chunk = []
+                for _ in range(self._max_event_count):
+                    try:
+                        event = await asyncio.wait_for(self.PAYLOAD_QUEUE.get(), timeout=1.0)
+                        chunk.append(event)
+                    except asyncio.TimeoutError:
+                        break
+                if chunk:
+                    async with self._send_semaphore:
+                        _, failed = await self._send_async(chunk)
+                        # Re-enqueue failed events
+                        for event in failed:
+                            await self.PAYLOAD_QUEUE.put(event)
+            except asyncio.CancelledError:
+                break
+            except Exception as e:  # noqa: BLE001,W0718
+                from dtagent import LOG  # COMPILE_REMOVE
 
-        events_count = 0
-
-        if payload is not None:
-            self.PAYLOAD_CACHE += payload
-
-        if payload is None or len(self.PAYLOAD_CACHE) >= self._max_event_count:
-            collected_events_failed_to_send = []
-            for events_chunk in self._split_payload(self.PAYLOAD_CACHE):
-                events_sent, events_failed_to_send = self._send(events_chunk)
-                events_count += events_sent
-                collected_events_failed_to_send += events_failed_to_send
-            self.PAYLOAD_CACHE = collected_events_failed_to_send
-
-        return events_count
+                LOG.error("Error in background sender: %s", e)
 
     def flush_events(self) -> int:
-        """Flush business events cache"""
-        return self._send_events()
+        """Flush remaining events in the queue and return sent count."""
+        try:
+            asyncio.get_running_loop()
+            # If loop is running, we can't run another, so just return current count
+            return self._sent_count
+        except RuntimeError:
+            # No loop, run the async flush
+            async def _flush():
+                # If no background tasks are running, process the queue synchronously
+                if not self._send_tasks:
+                    while not self.PAYLOAD_QUEUE.empty():
+                        chunk = []
+                        for _ in range(self._max_event_count):
+                            try:
+                                event = self.PAYLOAD_QUEUE.get_nowait()
+                                chunk.append(event)
+                            except asyncio.QueueEmpty:
+                                break
+                        if chunk:
+                            _, failed = await self._send_async(chunk)
+                            # Re-enqueue failed events
+                            for event in failed:
+                                await self.PAYLOAD_QUEUE.put(event)
+                else:
+                    # Wait for background tasks to finish
+                    while not self.PAYLOAD_QUEUE.empty():
+                        await asyncio.sleep(0.1)
+                sent = self._sent_count
+                self._sent_count = 0
+                return sent
+
+            return asyncio.run(_flush())
+
+    async def shutdown(self) -> None:
+        """Shutdown background tasks."""
+        self._shutdown_event.set()
+        if self._send_tasks:
+            await asyncio.gather(*self._send_tasks, return_exceptions=True)
+
+    def get_sent_count(self) -> int:
+        """Get the number of events successfully sent."""
+        return self._sent_count
+
+    def get_enqueued_count(self) -> int:
+        """Get the number of events enqueued."""
+        return self._enqueued_count
 
     @abstractmethod
     def _pack_event_data(
@@ -298,7 +378,7 @@ class AbstractEvents(ABC):
         event_type: Optional[Union[str, EventType]] = None,
         context: Optional[Dict[str, Any]] = None,
         **kwargs,
-    ) -> int:
+    ) -> None:
         """Sends given list of events to Dynatrace via the chosen API.
 
         This is an abstract method that must be implemented in subclasses.
@@ -319,7 +399,7 @@ class AbstractEvents(ABC):
                 formatted_time (bool, optional):        Indicates whether the time values in event_data are already formatted
 
         Returns:
-            int: Count of all events that went through (or were scheduled successfully); -1 indicates a problem
+            None
         """
         raise NotImplementedError("This is an abstract method and should be implemented in child classes")
 
@@ -331,7 +411,7 @@ class AbstractEvents(ABC):
         is_data_structured: bool = True,
         context: Optional[Dict] = None,
         **kwargs,
-    ) -> int:
+    ) -> None:
         """Generates and sends payload with selected events to Dynatrace via the chosen API.
 
         Args:
@@ -352,7 +432,7 @@ class AbstractEvents(ABC):
                 formatted_time (bool, optional):            Indicates whether the time values in event_data are already formatted
 
         Returns:
-            int: Count of all events that went through (or were scheduled successfully); -1 indicates a problem
+            None
         """
         from dtagent.util import _unpack_payload  # COMPILE_REMOVE
 
@@ -361,7 +441,7 @@ class AbstractEvents(ABC):
         if is_data_structured:
             _event_data = [_unpack_payload(query_datum) for query_datum in _event_data]
 
-        return self.send_events(_event_data, event_type, context, **kwargs)
+        self.send_events(_event_data, event_type, context, **kwargs)
 
 
 ##endregion
