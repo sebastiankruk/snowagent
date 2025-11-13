@@ -34,6 +34,8 @@ ENV_VAR_NAME = "DTAGENT_TOKEN"
 class TestOtelManager:
 
     def test_otel_manager_throw_exception(self):
+        import asyncio
+
         original_env_var = os.environ.get(ENV_VAR_NAME)
         os.environ[ENV_VAR_NAME] = "invalid_token"
 
@@ -53,7 +55,7 @@ class TestOtelManager:
             with pytest.raises(RuntimeError, match="Too many failed attempts to send data to Dynatrace \\(\\d+ / \\d+\\), aborting run"):
                 i = 0
                 while i < max_fails_allowed or max_fails_allowed <= OtelManager.get_current_fail_count():
-                    sender.send_data(structured_test_data[0])
+                    asyncio.run(sender.send_data(structured_test_data[0]))
                     sender._flush_logs()
                     i += 1
                 sender.teardown()
