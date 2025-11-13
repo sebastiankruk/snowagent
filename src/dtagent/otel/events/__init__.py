@@ -86,14 +86,11 @@ class AbstractEvents(ABC):
         """
         _default_params = default_params or {}
 
-        self.PAYLOAD_QUEUE: asyncio.Queue[Dict[str, Any]] = asyncio.Queue()
-        self._send_semaphore = asyncio.Semaphore(_default_params.get("max_concurrent_senders", 5))
-        self._send_tasks: List[asyncio.Task] = []
-        self._shutdown_event = asyncio.Event()
-        self._enqueued_count = 0
-        self._sent_count = 0
         self._configuration = configuration
         self._resource_attributes = self._configuration.get("resource.attributes")
+        self._max_concurrent_senders = self._configuration.get(
+            otel_module=event_type, key="max_concurrent_senders", default_value=_default_params.get("max_concurrent_senders", 5)
+        )
         self._max_payload_bytes = self._configuration.get(
             otel_module=event_type, key="max_payload_bytes", default_value=_default_params.get("max_payload_bytes", 10000000)
         )
@@ -116,10 +113,17 @@ class AbstractEvents(ABC):
             otel_module=event_type, key="api_post_timeout", default_value=_default_params.get("api_post_timeout", 30)
         )
 
+        self.PAYLOAD_QUEUE: asyncio.Queue[Dict[str, Any]] = asyncio.Queue()
+        self._send_semaphore = asyncio.Semaphore(self._max_concurrent_senders)
+        self._send_tasks: List[asyncio.Task] = []
+        self._shutdown_event = asyncio.Event()
+        self._enqueued_count = 0
+        self._sent_count = 0
+
         # Start background senders
         try:
             asyncio.get_running_loop()
-            for _ in range(_default_params.get("max_concurrent_senders", 5)):
+            for _ in range(self._max_concurrent_senders):
                 task = asyncio.create_task(self._background_sender())
                 self._send_tasks.append(task)
         except RuntimeError:
