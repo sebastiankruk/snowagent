@@ -239,7 +239,7 @@ class TelemetrySender(AbstractDynatraceSnowAgentConnector, Plugin):
 
                     if self._send_davis_events:
                         try:
-                            davis_events_cnt += self._davis_events.report_via_api(
+                            self._davis_events.report_via_api(
                                 query_data=clean_dict,
                                 event_type=(EventType[row_dict["event.type"]] if "event.type" in row_dict else EventType.CUSTOM_INFO),
                                 title=_message or f"Event sent with {self.__context_name}",
@@ -269,7 +269,7 @@ class TelemetrySender(AbstractDynatraceSnowAgentConnector, Plugin):
 
                 for chunk in _chunked_iterable(self._get_source_rows(source_data), chunk_size):
                     if self._send_biz_events:
-                        bizevents_cnt += self._biz_events.report_via_api(
+                        self._biz_events.report_via_api(
                             query_data=chunk,
                             event_type=EventType.CUSTOM_INFO,
                             title=f"BizEvent sent with {self.__context_name}",
@@ -277,7 +277,7 @@ class TelemetrySender(AbstractDynatraceSnowAgentConnector, Plugin):
                             is_data_structured=False,
                         )
                     if self._send_events:
-                        events_cnt += self._events.report_via_api(
+                        self._events.report_via_api(
                             query_data=chunk,
                             event_type=EventType.CUSTOM_INFO,
                             title=f"Event sent with {self.__context_name}",

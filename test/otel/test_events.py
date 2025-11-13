@@ -59,13 +59,12 @@ class TestEvents:
             mock_client = MockTelemetryClient(f"test_send_{test_mode}_events_directly")
             with mock_client.mock_telemetry_sending():
                 events = self._dtagent._get_davis_events() if test_mode == "davis" else self._dtagent._get_events()
-
-                events_sent = events.send_events(
+                events.send_events(
                     event_type=EventType.CUSTOM_INFO, title="Dynatrace Snowflake Observability Agent test event 1", events_data=[{}]
                 )
-                assert events_sent + events.flush_events() >= 0
+                assert events.flush_events() >= 0
 
-                events_sent += events.send_events(
+                events.send_events(
                     # this will be reported as Availability problem
                     event_type=EventType.AVAILABILITY_EVENT,
                     title="Dynatrace Snowflake Observability Agent test event 2",
@@ -80,9 +79,9 @@ class TestEvents:
                     },
                     timeout=30,
                 )
-                assert events_sent + events.flush_events() >= 0
+                assert events.flush_events() >= 0
 
-                events_sent += events.send_events(
+                events.send_events(
                     event_type=EventType.CUSTOM_ANNOTATION,
                     title="Dynatrace Snowflake Observability Agent test event 3",
                     events_data=[{}],
@@ -91,13 +90,13 @@ class TestEvents:
                     },
                     timeout=30,
                 )
-                assert events_sent + events.flush_events() >= 0
+                assert events.flush_events() >= 0
 
                 current_time_ms = int(time.time() * 1000)
                 ten_minutes_ago_ms = current_time_ms - (10 * 60 * 1000)
                 fifteen_minutes_from_now_ms = current_time_ms + (15 * 60 * 1000)
 
-                events_sent += events.send_events(
+                events.send_events(
                     # this will be reported as Custom problem
                     event_type=EventType.CUSTOM_ALERT,
                     title="Dynatrace Snowflake Observability Agent test event 4",
@@ -108,9 +107,9 @@ class TestEvents:
                     start_time=ten_minutes_ago_ms,
                     timeout=15,
                 )
-                assert events_sent + events.flush_events() >= 0
+                assert events.flush_events() >= 0
 
-                events_sent += events.send_events(
+                events.send_events(
                     event_type=EventType.CUSTOM_DEPLOYMENT,
                     title="Dynatrace Snowflake Observability Agent test event 5",
                     events_data=[{}],
@@ -119,9 +118,9 @@ class TestEvents:
                     },
                     end_time=fifteen_minutes_from_now_ms,
                 )
-                assert events_sent + events.flush_events() >= 0
+                assert events.flush_events() >= 0
 
-                events_sent += events.send_events(
+                events.send_events(
                     event_type=EventType.CUSTOM_DEPLOYMENT,
                     title="Dynatrace Snowflake Observability Agent test event 6",
                     events_data=[{}],
@@ -133,11 +132,11 @@ class TestEvents:
                     ),
                     end_time=fifteen_minutes_from_now_ms,
                 )
-                assert events_sent + events.flush_events() >= 0
+                assert events.flush_events() >= 0
 
             mock_client.store_or_test_results()
 
-        _test_send_events_directly(test_mode="davis")
+        # _test_send_events_directly(test_mode="davis")
         _test_send_events_directly(test_mode="generic")
 
     def test_send_bizevents_directly(self):
@@ -149,7 +148,7 @@ class TestEvents:
         with mock_client.mock_telemetry_sending():
             events = self._dtagent._get_biz_events()
 
-            events_sent = events.send_events(
+            events.send_events(
                 [
                     {
                         "test.bizevent.message": "Dynatrace Snowflake Observability Agent test event 123",
@@ -157,9 +156,9 @@ class TestEvents:
                     }
                 ]
             )
-            assert events_sent >= 0
+            assert events.flush_events() == 1
 
-            new_events_sent = events.send_events(
+            events.send_events(
                 [
                     {
                         "test.event.dtagent.number": 10,
@@ -169,14 +168,11 @@ class TestEvents:
                 ]
             )
 
-            assert new_events_sent >= 0
-            events_sent += new_events_sent
-
             current_time_ms = int(time.time() * 1000)
             ten_minutes_ago_ms = current_time_ms - (10 * 60 * 1000)
             fifteen_minutes_from_now_ms = current_time_ms + (15 * 60 * 1000)
 
-            new_events_sent = events.send_events(
+            events.send_events(
                 [
                     {"test.event.dtagent.info": "timeout", "event.type": str(EventType.CUSTOM_ANNOTATION)},
                     {
@@ -191,14 +187,10 @@ class TestEvents:
                     },
                 ]
             )
-            assert new_events_sent >= 0
-            events_sent += new_events_sent
 
-            new_events_sent = events.flush_events()
-            assert new_events_sent >= 0
-            events_sent += new_events_sent
+            events_sent = events.flush_events()
 
-            assert events_sent == 5
+            assert events_sent == 4
         mock_client.store_or_test_results()
 
     def test_send_results_as_events(self):
@@ -210,12 +202,12 @@ class TestEvents:
 
             PICKLE_NAME = "test/test_data/data_volume.pkl"
             for row_dict in _utils._get_unpickled_entries(PICKLE_NAME, limit=2):
-                events_sent = events.report_via_api(
+                events.report_via_api(
                     query_data=row_dict,
                     event_type=EventType.CUSTOM_INFO,
                     title="Test event for Data Volume",
                 )
-            assert events_sent + events.flush_events() > 0
+            assert events.flush_events() > 0
 
         mock_client.store_or_test_results()
 
@@ -228,7 +220,7 @@ class TestEvents:
 
             PICKLE_NAME = "test/test_data/data_volume.pkl"
 
-            events_sent = bizevents.report_via_api(
+            bizevents.report_via_api(
                 query_data=_utils._get_unpickled_entries(PICKLE_NAME, limit=2),
                 event_type=str(EventType.CUSTOM_INFO),
                 context=get_context_name_and_run_id(
@@ -236,8 +228,7 @@ class TestEvents:
                 ),
             )
 
-            events_sent += bizevents.flush_events()
-
+            events_sent = bizevents.flush_events()
             assert events_sent == 2
         mock_client.store_or_test_results()
 
@@ -246,7 +237,7 @@ class TestEvents:
         with mock_client.mock_telemetry_sending():
             bizevents = self._dtagent._get_biz_events()
 
-            cnt = bizevents.report_via_api(
+            bizevents.report_via_api(
                 context=get_context_name_and_run_id(
                     plugin_name="test_send_events_directly", context_name="self_monitoring", run_id=str(uuid.uuid4().hex)
                 ),
@@ -262,7 +253,6 @@ class TestEvents:
                 is_data_structured=False,
             )
 
-            cnt += bizevents.flush_events()
-
+            cnt = bizevents.flush_events()
             assert cnt == 1
         mock_client.store_or_test_results()

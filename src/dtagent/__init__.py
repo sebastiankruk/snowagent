@@ -159,13 +159,13 @@ class AbstractDynatraceSnowAgentConnector:
                 "dsoa.task.exec.status": str(status),
             }
 
-            bizevents_sent = self._biz_events.report_via_api(
+            self._biz_events.report_via_api(
                 query_data=[data_dict | (details_dict or {})],
                 event_type="dsoa.task",
                 context=get_context_name_and_run_id(plugin_name=plugin_name or task_name, context_name="self_monitoring", run_id=exec_id),
                 is_data_structured=False,
             )
-            bizevents_sent += self._biz_events.flush_events()
+            bizevents_sent = self._biz_events.flush_events()
             if bizevents_sent == 0:
                 LOG.warning("Unable to report task execution status via BizEvents: %s", str(data_dict))
 

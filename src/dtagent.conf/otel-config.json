@@ -29,11 +29,13 @@
                 502,
                 503
             ],
+            "API_POST_TIMEOUT": 30,
             "IS_DISABLED": false
         },
         "DAVIS_EVENTS": {
             "MAX_RETRIES": 5,
             "RETRY_DELAY_MS": 10000,
+            "API_POST_TIMEOUT": 30,
             "IS_DISABLED": false
         },
         "BIZ_EVENTS": {
@@ -46,6 +48,7 @@
                 502,
                 503
             ],
+            "API_POST_TIMEOUT": 30,
             "IS_DISABLED": false
         }
     },

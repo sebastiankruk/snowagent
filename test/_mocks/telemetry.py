@@ -119,6 +119,7 @@ class MockTelemetryClient:
             patch("dtagent.otel.events.generic.requests.post") as mock_generic_events,
             patch("dtagent.otel.events.davis.requests.post") as mock_davis_events,
             patch("dtagent.otel.events.bizevents.requests.post") as mock_bizevents,
+            patch("aiohttp.ClientSession.post") as mock_aiohttp_post,
             patch("snowflake.snowpark.Session.sql") as mock_sql,
         ):
             # Set up HTTP mocks
@@ -127,6 +128,7 @@ class MockTelemetryClient:
             mock_generic_events.side_effect = self._side_effect_function
             mock_davis_events.side_effect = self._side_effect_function
             mock_bizevents.side_effect = self._side_effect_function
+            mock_aiohttp_post.side_effect = self._aiohttp_side_effect_function
 
             # Set up session.sql mock to prevent actual Snowflake calls
             current_time = datetime.datetime.now(datetime.timezone.utc)
@@ -451,3 +453,26 @@ class MockTelemetryClient:
             print(f"###### PROBLEM SENDING {telemetry_type} TELEMETRY TO {url}; ERROR CODE: {mock_response.status_code} ######")
 
         return mock_response
+
+    def _aiohttp_side_effect_function(self, *args, **kwargs):
+        """Async side effect function to handle aiohttp telemetry data processing."""
+        from unittest.mock import AsyncMock
+
+        # Call the synchronous side effect to collect data
+        sync_result = self._side_effect_function(*args, **kwargs)
+
+        # Create an async mock response
+        mock_response = AsyncMock()
+        mock_response.status = sync_result.status_code
+        mock_response.reason = "OK"
+        mock_response.text = AsyncMock(return_value="OK")
+
+        # Create a context manager that returns the mock response
+        class AsyncContextManager:
+            async def __aenter__(self):
+                return mock_response
+
+            async def __aexit__(self, exc_type, exc_val, exc_tb):
+                pass
+
+        return AsyncContextManager()

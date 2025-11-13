@@ -358,7 +358,7 @@ class Plugin(ABC):
         end_time: Optional[str],
         properties: Optional[Dict[str, Any]],
         __context: Optional[Dict[str, Any]],
-    ) -> int:
+    ) -> None:
         """Generic method reporting single log line for _log_entries. To be overwritten by plugins when required
 
         Args:
@@ -370,9 +370,9 @@ class Plugin(ABC):
             properties (Dict): additional properties to be added to event payload
             context (Optional[Dict]): additional context to be added to event payload
         Returns:
-            int: 1+ if event was reported successfully, 0 otherwise
+            None
         """
-        return self._events.report_via_api(
+        self._events.report_via_api(
             query_data=row_dict,
             event_type=event_type,
             title=title,
@@ -423,7 +423,7 @@ class Plugin(ABC):
                     Optional[Dict[str, Any]],
                     Optional[Dict[str, Any]],
                 ],
-                int,
+                None,
             ]
         ] = None,
         f_event_timestamp_payload_prepare: Optional[Callable[[str, Any, Dict], Tuple[str, Dict[str, Any], EventType]]] = None,
@@ -503,7 +503,7 @@ class Plugin(ABC):
                     if ts_dt >= last_timestamp:
                         title, properties, event_type = f_event_timestamp_payload_prepare(key, ts, row_dict)
 
-                        processed_events_cnt += self._events.report_via_api(
+                        self._events.report_via_api(
                             query_data=row_dict,
                             title=title,
                             additional_payload=properties,
@@ -526,7 +526,7 @@ class Plugin(ABC):
                 )
             ):
                 event_type, title, properties = event_payload_prepare(row_dict)
-                processed_events_cnt += f_report_event(
+                f_report_event(
                     row_dict,
                     event_type,
                     title,
