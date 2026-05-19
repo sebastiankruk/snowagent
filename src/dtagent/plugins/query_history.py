@@ -326,6 +326,7 @@ class QueryHistoryPlugin(Plugin):
                     title=message,
                     context=context,
                 )
+                self._bizevents.flush_events()
 
 
 ##endregion

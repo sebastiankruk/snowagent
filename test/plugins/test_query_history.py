@@ -435,6 +435,7 @@ class TestEmitOverloadProtectionEvent:
         plugin._emit_overload_protection_event(refresh_result, {"dsoa.run.context": "query_history"})
 
         plugin._bizevents.send_events.assert_called_once()
+        plugin._bizevents.flush_events.assert_called_once()
         plugin._events.send_events.assert_not_called()
 
     def test_no_event_when_max_entries_not_applied(self):
