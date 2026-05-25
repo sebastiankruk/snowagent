@@ -67,7 +67,8 @@ with cte_include_warehouses as (
         qh.session_id,
         qh.warehouse_name,
         qh.database_name,
-        qh.user_name
+        qh.user_name,
+        COUNT(*) OVER()                                                         AS _TOTAL_AVAILABLE
     from
         SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY qh
     where
@@ -96,6 +97,11 @@ with cte_include_warehouses as (
          or qh.user_name LIKE ANY (select pattern from cte_include_users))
     and ((select count(*) from cte_exclude_users) = 0
          or not qh.user_name LIKE ANY (select pattern from cte_exclude_users))
+    QUALIFY CASE
+        WHEN CONFIG.F_GET_CONFIG_VALUE('plugins.query_history.max_entries', 0)::int = 0 THEN TRUE
+        ELSE ROW_NUMBER() OVER (ORDER BY qh.execution_time DESC NULLS LAST)
+                 <= CONFIG.F_GET_CONFIG_VALUE('plugins.query_history.max_entries', 0)::int
+    END
 )
 , cte_access_history as (
     select
@@ -254,7 +260,7 @@ select
 
     qh.fault_handling_time,
 
-    count(*) over ()                                                                                                     as _TOTAL_AVAILABLE
+    cqc._TOTAL_AVAILABLE                                                                                                 as _TOTAL_AVAILABLE
 from
     SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY           qh
 inner join
@@ -290,11 +296,6 @@ and not (qh.QUERY_TEXT = '' and
          qh.ROLE_NAME is null and
          qh.DATABASE_NAME is null and
          qh.SCHEMA_NAME is null)
-QUALIFY CASE
-    WHEN CONFIG.F_GET_CONFIG_VALUE('plugins.query_history.max_entries', 0)::int = 0 THEN TRUE
-    ELSE ROW_NUMBER() OVER (ORDER BY qh.execution_time DESC NULLS LAST)
-             <= CONFIG.F_GET_CONFIG_VALUE('plugins.query_history.max_entries', 0)::int
-END
 ;
 grant select on table APP.V_QUERY_HISTORY to role DTAGENT_VIEWER;
 
