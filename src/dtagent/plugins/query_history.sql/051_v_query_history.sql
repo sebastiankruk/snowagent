@@ -295,15 +295,21 @@ select
 
     cqc._TOTAL_AVAILABLE                                                                                                 as _TOTAL_AVAILABLE
 from
-    SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY           qh
-inner join
     cte_queries_to_check                            cqc
- on  cqc.query_id = qh.query_id
- and cqc.start_time = qh.start_time
+inner join
+    SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY           qh
+ on  qh.query_id = cqc.query_id
+ and qh.start_time = cqc.start_time
+-- this will ensure we do not report some strange Snowflake-internal queries
+ and not (qh.QUERY_TEXT = '' and
+          qh.USER_NAME = 'SYSTEM' and
+          qh.ROLE_NAME is null and
+          qh.DATABASE_NAME is null and
+          qh.SCHEMA_NAME is null)
 left join
     cte_access_history                              ah
- on  ah.query_id = qh.query_id
- and ah.start_time = qh.start_time
+ on  ah.query_id = cqc.query_id
+ and ah.start_time = cqc.start_time
 left join
     SNOWFLAKE.ACCOUNT_USAGE.SESSIONS s
  on  s.session_id = qh.session_id
@@ -320,20 +326,6 @@ left join
     SNOWFLAKE.ACCOUNT_USAGE.QUERY_ATTRIBUTION_HISTORY qah
  on qah.query_id = qh.query_id
 --%:OPTION:query_cost_attribution
-where
-    qh.end_time >= greatest(
-        coalesce(
-            (select max(LAST_TIMESTAMP) from STATUS.PROCESSED_MEASUREMENTS_LOG where MEASUREMENTS_SOURCE = 'query_history'),
-            timeadd(minute, -CONFIG.F_GET_CONFIG_VALUE('plugins.query_history.max_lookback_minutes', 120)::int, current_timestamp)
-        ),
-        timeadd(minute, -CONFIG.F_GET_CONFIG_VALUE('plugins.query_history.max_lookback_minutes', 120)::int, current_timestamp)
-    )
--- this will ensure we do not report some strange Snowflake-internal queries
-and not (qh.QUERY_TEXT = '' and
-         qh.USER_NAME = 'SYSTEM' and
-         qh.ROLE_NAME is null and
-         qh.DATABASE_NAME is null and
-         qh.SCHEMA_NAME is null)
 -- NOTE: warehouse and resource-monitor DDL (ALTER_WAREHOUSE, CREATE_WAREHOUSE,
 -- DROP_WAREHOUSE, ALTER_RESOURCE_MONITOR, CREATE_RESOURCE_MONITOR,
 -- DROP_RESOURCE_MONITOR) is NOT held back even when track_ddl_changes=true.
