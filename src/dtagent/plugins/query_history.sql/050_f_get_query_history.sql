@@ -142,7 +142,7 @@ BEGIN
                 l.trace:span_id::varchar                                                       as _span_id,
                 l.trace:trace_id::varchar                                                      as _trace_id,
 --%:PLUGIN:event_log
-                object_construct(
+                OBJECT_CONSTRUCT(
                     'db.namespace',                    qh.database_name,
                     'db.collection.name',              split_part(
                         case when ah.query_tables is not null and array_size(ah.query_tables) > 0
@@ -157,8 +157,8 @@ BEGIN
                     'snowflake.warehouse.name',        qh.warehouse_name,
                     'snowflake.query.execution_status', qh.execution_status,
                     'snowflake.user.type',             qh.user_type
-                )                                                                              as dimensions,
-                object_construct(
+                )                                                                              as DIMENSIONS,
+                OBJECT_CONSTRUCT(
                     'db.query.text',                   app.f_obfuscate_query_text(
                                                            qh.query_text,
                                                            config.f_get_config_value(
@@ -225,8 +225,8 @@ BEGIN
                     'snowflake.query.operator.stats',  null,
                     'snowflake.query.operator.time',   null,
                     'snowflake.query.with_operator_stats', false
-                )                                                                              as attributes,
-                object_construct(
+                )                                                                              as ATTRIBUTES,
+                OBJECT_CONSTRUCT(
                     'snowflake.data.scanned_from_cache',           qh.percentage_scanned_from_cache,
                     'snowflake.load.used',                         qh.query_load_percent,
                     'snowflake.acceleration.scale_factor.max',     qh.query_acceleration_upper_limit_scale_factor,
@@ -270,7 +270,7 @@ BEGIN
                     'snowflake.rows.updated',                      qh.rows_updated,
                     'snowflake.rows.deleted',                      qh.rows_deleted,
                     'snowflake.rows.unloaded',                     qh.rows_unloaded
-                )                                                                              as metrics,
+                )                                                                              as METRICS,
                 count(*) over ()                                                               as _total_available
             from
                 SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY                  qh
