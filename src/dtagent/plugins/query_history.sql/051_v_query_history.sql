@@ -27,25 +27,46 @@
 --
 use role DTAGENT_OWNER; use database DTAGENT_DB; use warehouse DTAGENT_WH;
 
+-- Performance-critical parameter staging table.
+-- P_REFRESH_RECENT_QUERIES populates this with a pre-resolved cutoff_time and
+-- max_entries BEFORE querying V_QUERY_HISTORY.  The view reads parameters from
+-- this table instead of calling F_GET_CONFIG_VALUE() directly in the WHERE
+-- clause — that UDF is non-deterministic to the Snowflake planner and disables
+-- micro-partition pruning on ACCOUNT_USAGE.QUERY_HISTORY (full scan → timeout).
+-- With a concrete 1-row table the planner can treat the value as stable and
+-- apply partition pruning, reducing wall-clock time from minutes to ~5 seconds.
+create or replace transient table APP.TMP_QUERY_HISTORY_PARAMS (
+    cutoff_time   TIMESTAMP_LTZ,
+    max_entries   INT
+) DATA_RETENTION_TIME_IN_DAYS = 0;
+grant select, truncate, insert on table APP.TMP_QUERY_HISTORY_PARAMS to role DTAGENT_VIEWER;
+
 create or replace view APP.V_QUERY_HISTORY
 as
--- Resolve all CONFIG UDF calls and the watermark into scalar columns FIRST.
--- This is critical for performance: F_GET_CONFIG_VALUE() is a SQL UDF that
--- queries CONFIG.CONFIGURATIONS. When used directly inside the WHERE clause of
--- SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY, Snowflake treats the time boundary as
--- non-deterministic at compile time and disables micro-partition pruning —
--- causing a full table scan over all historical data (minutes → seconds fix).
--- By resolving to literals here, the planner sees a constant timestamp.
+-- cte_config reads from TMP_QUERY_HISTORY_PARAMS which P_REFRESH_RECENT_QUERIES
+-- populates with pre-resolved scalars before each INSERT run.
+-- For ad-hoc / direct queries the table may be empty; fall back to a fixed
+-- 120-minute window (the default max_lookback_minutes value).  The UDF
+-- F_GET_CONFIG_VALUE() must NOT appear in the fallback path here because
+-- Snowflake compiles both branches of COALESCE and the UDF disables
+-- micro-partition pruning on ACCOUNT_USAGE.QUERY_HISTORY even when
+-- TMP_QUERY_HISTORY_PARAMS is populated.
 with cte_config as (
     select
-        greatest(
-            coalesce(
-                (select max(LAST_TIMESTAMP) from STATUS.PROCESSED_MEASUREMENTS_LOG where MEASUREMENTS_SOURCE = 'query_history'),
-                timeadd(minute, -CONFIG.F_GET_CONFIG_VALUE('plugins.query_history.max_lookback_minutes', 120)::int, current_timestamp)
-            ),
-            timeadd(minute, -CONFIG.F_GET_CONFIG_VALUE('plugins.query_history.max_lookback_minutes', 120)::int, current_timestamp)
+        coalesce(
+            (select cutoff_time from APP.TMP_QUERY_HISTORY_PARAMS limit 1),
+            greatest(
+                coalesce(
+                    (select max(LAST_TIMESTAMP) from STATUS.PROCESSED_MEASUREMENTS_LOG where MEASUREMENTS_SOURCE = 'query_history'),
+                    timeadd(minute, -120, current_timestamp)
+                ),
+                timeadd(minute, -120, current_timestamp)
+            )
         )                                                                       as cutoff_time,
-        CONFIG.F_GET_CONFIG_VALUE('plugins.query_history.max_entries', 0)::int as max_entries
+        coalesce(
+            (select max_entries from APP.TMP_QUERY_HISTORY_PARAMS limit 1),
+            0
+        )                                                                       as max_entries
 )
 , cte_include_warehouses as (
     select distinct ci.VALUE::varchar as pattern
