@@ -45,9 +45,7 @@ with cte_config as (
             ),
             timeadd(minute, -CONFIG.F_GET_CONFIG_VALUE('plugins.query_history.max_lookback_minutes', 120)::int, current_timestamp)
         )                                                                       as cutoff_time,
-        CONFIG.F_GET_CONFIG_VALUE('plugins.query_history.max_entries', 0)::int as max_entries,
-        CONFIG.F_GET_CONFIG_VALUE('plugins.query_history.track_ddl_changes', FALSE)::boolean
-                                                                                as track_ddl_changes
+        CONFIG.F_GET_CONFIG_VALUE('plugins.query_history.max_entries', 0)::int as max_entries
 )
 , cte_include_warehouses as (
     select distinct ci.VALUE::varchar as pattern
@@ -88,7 +86,6 @@ with cte_config as (
         qh.warehouse_name,
         qh.database_name,
         qh.user_name,
-        cfg.track_ddl_changes                                                   as track_ddl_changes,
         COUNT(*) OVER()                                                         AS _TOTAL_AVAILABLE
     from
         SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY qh
@@ -140,23 +137,13 @@ with cte_config as (
             )
         )                                                                       as query_dbs,
         -- EXPERIMENTAL: DDL change attribution from ACCESS_HISTORY.OBJECT_MODIFIED_BY_DDL.
-        -- Only populated when plugins.query_history.track_ddl_changes=true AND Snowflake
-        -- recorded a structured DDL payload for the query. NULL otherwise (no extra rows added).
-        CASE WHEN cqc.track_ddl_changes
-             THEN any_value(ah.object_modified_by_ddl:"objectDomain"::varchar)  END
-                                                                                as ddl_target_domain,
-        CASE WHEN cqc.track_ddl_changes
-             THEN any_value(ah.object_modified_by_ddl:"objectId"::varchar)      END
-                                                                                as ddl_target_id,
-        CASE WHEN cqc.track_ddl_changes
-             THEN any_value(ah.object_modified_by_ddl:"objectName"::varchar)    END
-                                                                                as ddl_target_name,
-        CASE WHEN cqc.track_ddl_changes
-             THEN any_value(ah.object_modified_by_ddl:"operationType"::varchar) END
-                                                                                as ddl_operation,
-        CASE WHEN cqc.track_ddl_changes
-             THEN any_value(ah.object_modified_by_ddl:"properties")             END
-                                                                                as ddl_properties
+        -- Always extracted unconditionally; NULL when OBJECT_MODIFIED_BY_DDL is not populated
+        -- or when plugins.query_history.track_ddl_changes=false (Python layer ignores the columns).
+        any_value(ah.object_modified_by_ddl:"objectDomain"::varchar)            as ddl_target_domain,
+        any_value(ah.object_modified_by_ddl:"objectId"::varchar)                as ddl_target_id,
+        any_value(ah.object_modified_by_ddl:"objectName"::varchar)              as ddl_target_name,
+        any_value(ah.object_modified_by_ddl:"operationType"::varchar)           as ddl_operation,
+        any_value(ah.object_modified_by_ddl:"properties")                       as ddl_properties
     from
         SNOWFLAKE.ACCOUNT_USAGE.ACCESS_HISTORY      ah
     inner join
