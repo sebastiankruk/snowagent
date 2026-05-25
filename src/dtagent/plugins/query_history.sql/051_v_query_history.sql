@@ -88,6 +88,7 @@ with cte_config as (
         qh.warehouse_name,
         qh.database_name,
         qh.user_name,
+        cfg.track_ddl_changes                                                   as track_ddl_changes,
         COUNT(*) OVER()                                                         AS _TOTAL_AVAILABLE
     from
         SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY qh
@@ -141,19 +142,19 @@ with cte_config as (
         -- EXPERIMENTAL: DDL change attribution from ACCESS_HISTORY.OBJECT_MODIFIED_BY_DDL.
         -- Only populated when plugins.query_history.track_ddl_changes=true AND Snowflake
         -- recorded a structured DDL payload for the query. NULL otherwise (no extra rows added).
-        CASE WHEN cfg.track_ddl_changes
+        CASE WHEN cqc.track_ddl_changes
              THEN any_value(ah.object_modified_by_ddl:"objectDomain"::varchar)  END
                                                                                 as ddl_target_domain,
-        CASE WHEN cfg.track_ddl_changes
+        CASE WHEN cqc.track_ddl_changes
              THEN any_value(ah.object_modified_by_ddl:"objectId"::varchar)      END
                                                                                 as ddl_target_id,
-        CASE WHEN cfg.track_ddl_changes
+        CASE WHEN cqc.track_ddl_changes
              THEN any_value(ah.object_modified_by_ddl:"objectName"::varchar)    END
                                                                                 as ddl_target_name,
-        CASE WHEN cfg.track_ddl_changes
+        CASE WHEN cqc.track_ddl_changes
              THEN any_value(ah.object_modified_by_ddl:"operationType"::varchar) END
                                                                                 as ddl_operation,
-        CASE WHEN cfg.track_ddl_changes
+        CASE WHEN cqc.track_ddl_changes
              THEN any_value(ah.object_modified_by_ddl:"properties")             END
                                                                                 as ddl_properties
     from
@@ -161,9 +162,7 @@ with cte_config as (
     inner join
         cte_queries_to_check                        cqc
     on cqc.query_id = ah.query_id
-    and cqc.start_time = ah.query_start_time
-    cross join
-        cte_config                                  cfg,
+    and cqc.start_time = ah.query_start_time,
         TABLE(flatten(ah.base_objects_accessed))    t,
         TABLE(flatten(ah.direct_objects_accessed))  v
     group by all
