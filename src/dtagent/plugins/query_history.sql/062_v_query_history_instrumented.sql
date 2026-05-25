@@ -29,6 +29,7 @@ use role DTAGENT_OWNER; use database DTAGENT_DB; use warehouse DTAGENT_WH;
 create or replace view DTAGENT_DB.APP.V_QUERY_HISTORY_INSTRUMENTED
 as
 select
+    rc.timestamp                                as TIMESTAMP,
     rc.query_id                                 as QUERY_ID,
     qos.query_operator_stats                    as QUERY_OPERATOR_STATS,
     rc.parent_query_id                          as PARENT_QUERY_ID,
