@@ -29,7 +29,27 @@ use role DTAGENT_OWNER; use database DTAGENT_DB; use warehouse DTAGENT_WH;
 
 create or replace view APP.V_QUERY_HISTORY
 as
-with cte_include_warehouses as (
+-- Resolve all CONFIG UDF calls and the watermark into scalar columns FIRST.
+-- This is critical for performance: F_GET_CONFIG_VALUE() is a SQL UDF that
+-- queries CONFIG.CONFIGURATIONS. When used directly inside the WHERE clause of
+-- SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY, Snowflake treats the time boundary as
+-- non-deterministic at compile time and disables micro-partition pruning —
+-- causing a full table scan over all historical data (minutes → seconds fix).
+-- By resolving to literals here, the planner sees a constant timestamp.
+with cte_config as (
+    select
+        greatest(
+            coalesce(
+                (select max(LAST_TIMESTAMP) from STATUS.PROCESSED_MEASUREMENTS_LOG where MEASUREMENTS_SOURCE = 'query_history'),
+                timeadd(minute, -CONFIG.F_GET_CONFIG_VALUE('plugins.query_history.max_lookback_minutes', 120)::int, current_timestamp)
+            ),
+            timeadd(minute, -CONFIG.F_GET_CONFIG_VALUE('plugins.query_history.max_lookback_minutes', 120)::int, current_timestamp)
+        )                                                                       as cutoff_time,
+        CONFIG.F_GET_CONFIG_VALUE('plugins.query_history.max_entries', 0)::int as max_entries,
+        CONFIG.F_GET_CONFIG_VALUE('plugins.query_history.track_ddl_changes', FALSE)::boolean
+                                                                                as track_ddl_changes
+)
+, cte_include_warehouses as (
     select distinct ci.VALUE::varchar as pattern
     from CONFIG.CONFIGURATIONS c, table(flatten(c.VALUE)) ci
     where c.PATH = 'plugins.query_history.include_warehouses'
@@ -71,14 +91,10 @@ with cte_include_warehouses as (
         COUNT(*) OVER()                                                         AS _TOTAL_AVAILABLE
     from
         SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY qh
+    cross join
+        cte_config                            cfg
     where
-        qh.end_time >= greatest(
-            coalesce(
-                (select max(LAST_TIMESTAMP) from STATUS.PROCESSED_MEASUREMENTS_LOG where MEASUREMENTS_SOURCE = 'query_history'),
-                timeadd(minute, -CONFIG.F_GET_CONFIG_VALUE('plugins.query_history.max_lookback_minutes', 120)::int, current_timestamp)
-            ),
-            timeadd(minute, -CONFIG.F_GET_CONFIG_VALUE('plugins.query_history.max_lookback_minutes', 120)::int, current_timestamp)
-        )
+        qh.end_time >= cfg.cutoff_time
     and qh.query_text is not null
     and qh.query_id not in (
             select query_id
@@ -98,9 +114,9 @@ with cte_include_warehouses as (
     and ((select count(*) from cte_exclude_users) = 0
          or not qh.user_name LIKE ANY (select pattern from cte_exclude_users))
     QUALIFY CASE
-        WHEN CONFIG.F_GET_CONFIG_VALUE('plugins.query_history.max_entries', 0)::int = 0 THEN TRUE
+        WHEN cfg.max_entries = 0 THEN TRUE
         ELSE ROW_NUMBER() OVER (ORDER BY qh.execution_time DESC NULLS LAST)
-                 <= CONFIG.F_GET_CONFIG_VALUE('plugins.query_history.max_entries', 0)::int
+                 <= cfg.max_entries
     END
 )
 , cte_access_history as (
@@ -125,19 +141,19 @@ with cte_include_warehouses as (
         -- EXPERIMENTAL: DDL change attribution from ACCESS_HISTORY.OBJECT_MODIFIED_BY_DDL.
         -- Only populated when plugins.query_history.track_ddl_changes=true AND Snowflake
         -- recorded a structured DDL payload for the query. NULL otherwise (no extra rows added).
-        CASE WHEN CONFIG.F_GET_CONFIG_VALUE('plugins.query_history.track_ddl_changes', FALSE)::boolean
+        CASE WHEN cfg.track_ddl_changes
              THEN any_value(ah.object_modified_by_ddl:"objectDomain"::varchar)  END
                                                                                 as ddl_target_domain,
-        CASE WHEN CONFIG.F_GET_CONFIG_VALUE('plugins.query_history.track_ddl_changes', FALSE)::boolean
+        CASE WHEN cfg.track_ddl_changes
              THEN any_value(ah.object_modified_by_ddl:"objectId"::varchar)      END
                                                                                 as ddl_target_id,
-        CASE WHEN CONFIG.F_GET_CONFIG_VALUE('plugins.query_history.track_ddl_changes', FALSE)::boolean
+        CASE WHEN cfg.track_ddl_changes
              THEN any_value(ah.object_modified_by_ddl:"objectName"::varchar)    END
                                                                                 as ddl_target_name,
-        CASE WHEN CONFIG.F_GET_CONFIG_VALUE('plugins.query_history.track_ddl_changes', FALSE)::boolean
+        CASE WHEN cfg.track_ddl_changes
              THEN any_value(ah.object_modified_by_ddl:"operationType"::varchar) END
                                                                                 as ddl_operation,
-        CASE WHEN CONFIG.F_GET_CONFIG_VALUE('plugins.query_history.track_ddl_changes', FALSE)::boolean
+        CASE WHEN cfg.track_ddl_changes
              THEN any_value(ah.object_modified_by_ddl:"properties")             END
                                                                                 as ddl_properties
     from
@@ -145,7 +161,9 @@ with cte_include_warehouses as (
     inner join
         cte_queries_to_check                        cqc
     on cqc.query_id = ah.query_id
-    and cqc.start_time = ah.query_start_time,
+    and cqc.start_time = ah.query_start_time
+    cross join
+        cte_config                                  cfg,
         TABLE(flatten(ah.base_objects_accessed))    t,
         TABLE(flatten(ah.direct_objects_accessed))  v
     group by all
