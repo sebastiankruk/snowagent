@@ -23,7 +23,7 @@
 --
 --
 -- APP.P_REFRESH_RECENT_QUERIES() will recreate two transient tables:
--- * APP.TMP_RECENT_QUERIES materializing current data in the APP.V_QUERY_HISTORY_INSTRUMENTED view
+-- * APP.TMP_RECENT_QUERIES materializing current data from APP.F_GET_QUERY_HISTORY()
 -- * APP.TMP_QUERY_OPERATOR_STATS where results from calling GET_QUERY_OPERATOR_STATS() per each query are kept
 -- both tables are created to have a cached data which Dynatrace Snowflake Observability Agent can send, especially when recursively sending query log as spans
 --
@@ -69,14 +69,7 @@ as
 $$
 DECLARE
     v_max_entries           INT DEFAULT CONFIG.F_GET_CONFIG_VALUE('plugins.query_history.max_entries', 0)::int;
-    v_max_lookback          INT DEFAULT CONFIG.F_GET_CONFIG_VALUE('plugins.query_history.max_lookback_minutes', 120)::int;
-    v_cutoff                TIMESTAMP_LTZ;
-    -- Performance: populate TMP_QUERY_HISTORY_PARAMS with pre-resolved scalars so
-    -- V_QUERY_HISTORY can cross-join them instead of calling F_GET_CONFIG_VALUE()
-    -- directly in the ACCOUNT_USAGE WHERE clause (UDF disables partition pruning).
-    tr_tmp_qh_params        TEXT DEFAULT 'truncate table if exists DTAGENT_DB.APP.TMP_QUERY_HISTORY_PARAMS;';
-    in_tmp_qh_params        TEXT DEFAULT '';
-    in_tmp_table_reset      TEXT DEFAULT 'insert into DTAGENT_DB.APP.TMP_RECENT_QUERIES select *, false as IS_PARENT, false as IS_ROOT, null::text as _PARENT_OTEL_SPAN_ID, null::text as _PARENT_OTEL_TRACE_ID from DTAGENT_DB.APP.V_QUERY_HISTORY_INSTRUMENTED;';
+    in_tmp_table_reset      TEXT DEFAULT 'insert into DTAGENT_DB.APP.TMP_RECENT_QUERIES select *, false as IS_PARENT, false as IS_ROOT, null::text as _PARENT_OTEL_SPAN_ID, null::text as _PARENT_OTEL_TRACE_ID from TABLE(DTAGENT_DB.APP.F_GET_QUERY_HISTORY());';
     up_tmp_table_is_parent  TEXT DEFAULT 'update DTAGENT_DB.APP.TMP_RECENT_QUERIES set IS_PARENT = TRUE where QUERY_ID in (select distinct PARENT_QUERY_ID from DTAGENT_DB.APP.TMP_RECENT_QUERIES);';
     up_tmp_table_is_root_null TEXT DEFAULT 'update DTAGENT_DB.APP.TMP_RECENT_QUERIES set IS_ROOT = TRUE where PARENT_QUERY_ID is null;';
     up_tmp_table_is_root_miss TEXT DEFAULT 'update DTAGENT_DB.APP.TMP_RECENT_QUERIES set IS_ROOT = TRUE where PARENT_QUERY_ID is not null and PARENT_QUERY_ID not in (select distinct QUERY_ID from DTAGENT_DB.APP.TMP_RECENT_QUERIES);';
@@ -164,24 +157,6 @@ DECLARE
     v_total_processed       INT DEFAULT 0;
 
 BEGIN
-    -- Resolve the cutoff timestamp to a true scalar variable so it can be written
-    -- into TMP_QUERY_HISTORY_PARAMS as a literal.  V_QUERY_HISTORY cross-joins that
-    -- table instead of calling F_GET_CONFIG_VALUE() in the WHERE clause — this is
-    -- what enables Snowflake micro-partition pruning on ACCOUNT_USAGE.QUERY_HISTORY.
-    v_cutoff := greatest(
-        coalesce(
-            (select max(LAST_TIMESTAMP) from STATUS.PROCESSED_MEASUREMENTS_LOG where MEASUREMENTS_SOURCE = 'query_history'),
-            dateadd('minute', -v_max_lookback, current_timestamp())
-        ),
-        dateadd('minute', -v_max_lookback, current_timestamp())
-    );
-    in_tmp_qh_params := 'insert into DTAGENT_DB.APP.TMP_QUERY_HISTORY_PARAMS(cutoff_time, max_entries) '
-                     || 'select ''' || to_varchar(v_cutoff, 'YYYY-MM-DD HH24:MI:SS.FF9 TZHTZM') || '''::timestamp_ltz, '
-                     || v_max_entries::text || ';';
-
-    EXECUTE IMMEDIATE :tr_tmp_qh_params;
-    EXECUTE IMMEDIATE :in_tmp_qh_params;
-
     EXECUTE IMMEDIATE :tr_tmp_table_recent;
     EXECUTE IMMEDIATE :tr_tmp_op_stats;
 
