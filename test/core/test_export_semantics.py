@@ -25,6 +25,7 @@
 #
 
 import os
+import subprocess
 from pathlib import Path
 from typing import Any, Dict
 
@@ -1516,6 +1517,88 @@ class TestNumericExampleWithoutTypeWarning:
             errors = _validate_entry("test.name", entry, "attributes", "test.yml")
         assert errors == []
         assert not any("numeric" in r.message.lower() for r in caplog.records)
+
+    def test_metrics_section_numeric_no_warning(self, caplog):
+        """Numeric metric example without __type must NOT warn.
+
+        In the ``metrics`` section ``__type`` represents the instrument type
+        (``gauge``, ``counter``, etc.), not the SD value type.  Metrics are
+        inherently numeric — no ``__type: long/double`` annotation is required.
+        """
+        import logging  # pylint: disable=import-outside-toplevel
+
+        entry = {"__description": "Credits used.", "__example": 15}
+        with caplog.at_level(logging.WARNING, logger="build.export_semantics"):
+            errors = _validate_entry("snowflake.credits.used", entry, "metrics", "test.yml")
+        assert errors == [], "must not be a hard error for metrics"
+        assert not any(
+            "numeric" in r.message.lower() for r in caplog.records
+        ), "Numeric metric examples must not trigger the no-__type warning"
+
+
+##endregion
+
+
+##region Integration tests — build_semantic_export.sh clean output
+
+
+#: Path to the build_semantic_export.sh script.
+_EXPORT_SCRIPT: Path = REPO_ROOT / "scripts" / "dev" / "build_semantic_export.sh"
+
+
+@pytest.mark.integration
+class TestBuildSemanticExportScriptOutput:
+    """Assert that build_semantic_export.sh produces zero WARNING and ERROR lines.
+
+    This is a regression gate: any future change to ``export_semantics.py`` or the
+    ``instruments-def.yml`` files that introduces new schema validation errors or
+    numeric-without-type warnings will be caught here before it reaches CI.
+
+    The test runs the shell script as a subprocess and scans the combined output
+    (stdout + stderr) for lines beginning with ``WARNING`` or ``ERROR``.
+    """
+
+    @pytest.fixture(scope="class")
+    def script_output(self):
+        """Run build_semantic_export.sh and return (returncode, combined_output)."""
+        if not _EXPORT_SCRIPT.exists():
+            pytest.skip(f"build_semantic_export.sh not found: {_EXPORT_SCRIPT}")
+        result = subprocess.run(
+            [str(_EXPORT_SCRIPT)],
+            capture_output=True,
+            text=True,
+            check=False,
+            cwd=str(REPO_ROOT),
+        )
+        combined = result.stdout + result.stderr
+        return result.returncode, combined
+
+    def test_script_exits_zero(self, script_output):
+        """build_semantic_export.sh must exit with code 0."""
+        returncode, output = script_output
+        assert returncode == 0, f"Script exited {returncode}:\n{output}"
+
+    def test_no_warning_lines(self, script_output):
+        """build_semantic_export.sh must produce zero WARNING lines.
+
+        WARNING lines indicate missing ``__type`` annotations or other non-fatal
+        issues in ``instruments-def.yml`` or ``export_semantics.py``.
+        """
+        _, output = script_output
+        warning_lines = [line for line in output.splitlines() if line.startswith("WARNING")]
+        assert warning_lines == [], f"build_semantic_export.sh produced {len(warning_lines)} WARNING line(s):\n" + "\n".join(
+            warning_lines[:20]
+        )
+
+    def test_no_error_lines(self, script_output):
+        """build_semantic_export.sh must produce zero ERROR lines.
+
+        ERROR lines indicate schema validation failures in the generated YAML files.
+        These are hard failures that mean the generated output is not SD-compliant.
+        """
+        _, output = script_output
+        error_lines = [line for line in output.splitlines() if line.startswith("ERROR")]
+        assert error_lines == [], f"build_semantic_export.sh produced {len(error_lines)} ERROR line(s):\n" + "\n".join(error_lines[:20])
 
 
 ##endregion
