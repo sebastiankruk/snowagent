@@ -256,12 +256,17 @@ log = logging.getLogger(__name__)
 
 
 class _IndentedDumper(yaml.Dumper):  # pylint: disable=too-many-ancestors
-    """YAML Dumper that properly indents block sequence items.
+    """YAML Dumper that properly indents block sequence items and preserves multi-line strings.
 
     The default PyYAML Dumper uses compact (indentless) block sequences, where
     list items (``-``) appear at the same indentation level as the parent key.
     The Dynatrace Semantic Dictionary convention requires sequence items to be
     indented 2 spaces beneath their parent key.
+
+    Additionally, this Dumper uses block literal style (``|``) for multi-line strings,
+    preventing the default PyYAML behaviour of wrapping them in single-quoted flow scalars
+    with embedded ``\\n`` characters.  This keeps DQL ``query_string`` values readable and
+    avoids spurious blank lines in generated YAML files.
 
     Example — default (compact, incorrect for SD)::
 
@@ -289,6 +294,31 @@ class _IndentedDumper(yaml.Dumper):  # pylint: disable=too-many-ancestors
             The result of the parent increase_indent with indentless=False.
         """
         return super().increase_indent(flow=flow, indentless=False)
+
+    def represent_str(self, data: str):
+        """Represent strings containing newlines as YAML literal block scalars (``|`` style).
+
+        PyYAML's default string representer serialises multi-line strings as single-quoted
+        flow scalars with embedded ``\\n`` sequences.  When the output file is re-read the
+        content is semantically identical, but the visual representation has an extra blank
+        line inserted after every original DQL line because the flow scalar preserves the
+        literal newlines verbatim while the surrounding indentation adds apparent spacing.
+
+        Using ``|`` (literal block style) preserves the original line structure and produces
+        clean, human-readable YAML that round-trips without extra blank lines.
+
+        Args:
+            data: String value to represent.
+
+        Returns:
+            YAML node; block-literal for multi-line strings, default scalar otherwise.
+        """
+        if "\n" in data:
+            return self.represent_scalar("tag:yaml.org,2002:str", data, style="|")
+        return self.represent_scalar("tag:yaml.org,2002:str", data)
+
+
+_IndentedDumper.add_representer(str, _IndentedDumper.represent_str)
 
 
 ##endregion
@@ -1348,9 +1378,9 @@ class SemanticExporter:
         model_doc: Dict[str, Any] = {
             "id": f"dsoa.events.{plugin_name}",
             "title": f"Snowflake {plugin_title} Lifecycle Events",
-            "brief": f"Timestamp-based state-change events emitted by the DSOA {plugin_name} plugin as business events.",
+            "brief": f"Timestamp-based state-change events emitted by the DSOA {plugin_name} plugin via the OpenPipeline Events API.",
             "model_group_id": "dsoa.events",
-            "data_object": "bizevents",
+            "data_object": "event",
             "interfaces": ["i.dsoa_resource"],
         }
         if dql_queries:
@@ -1825,9 +1855,7 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     """
     parser = argparse.ArgumentParser(description="Export DSOA instruments-def.yml files as Semantic Dictionary YAML.")
     parser.add_argument("--output", default="build/_semdict/source", help="Output directory (default: build/_semdict/source)")
-    parser.add_argument(
-        "--schema", default="scripts/tools/semconv.schema.json", help="Path to semconv.schema.json"
-    )
+    parser.add_argument("--schema", default="scripts/tools/semconv.schema.json", help="Path to semconv.schema.json")
     parser.add_argument("--verbose", action="store_true", help="Enable DEBUG logging")
     return parser.parse_args(argv)
 
